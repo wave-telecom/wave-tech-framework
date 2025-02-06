@@ -1,6 +1,6 @@
 {
   "name": "wave-tech-framework",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "description": "wave tech team shared utils framework",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -16,9 +16,16 @@
   "author": "",
   "license": "Apache-2.0",
   "dependencies": {
-    "winston": "^3.17.0"
+    "async_hooks": "^1.0.0",
+    "express": "^4.21.2",
+    "uuid": "^11.0.5",
+    "vitest": "^3.0.5",
+    "vitest-mock-extended": "^2.0.2",
+    "winston": "^3.17.0",
+    "zod": "^3.24.1"
   },
   "devDependencies": {
+    "@types/express": "^5.0.0",
     "@types/node": "^22.13.1",
     "ts-node": "^10.9.2",
     "typescript": "^5.7.3"
