@@ -11,6 +11,10 @@ export class Uuid {
     this.value = value;
   }
 
+  static toUuid(value: string): Uuid {
+    return new Uuid(value);
+  }
+
   static random(): Uuid {
     return new Uuid(v4());
   }
