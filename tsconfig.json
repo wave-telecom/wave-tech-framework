@@ -1,0 +1,39 @@
+{
+  "compilerOptions": {
+    "allowJs": true,
+    "module": "commonjs",
+    "moduleResolution": "node",
+    "pretty": true,
+    "sourceMap": true,
+    "strict": true,
+    "target": "es2017",
+    "outDir": "./dist",
+    "skipLibCheck": true,
+    "lib": [
+      "es6",
+      "DOM",
+      "es2019"
+    ],
+    "resolveJsonModule": true,
+    "types": [
+      "node"
+    ],
+    "typeRoots": [
+      "./node_modules/@types",
+      "./src/@types"
+    ],
+    "experimentalDecorators": true,
+    "emitDecoratorMetadata": true,
+    "esModuleInterop": true,
+    "baseUrl": "./"
+  },
+  "ts-node": {
+    "files": true
+  },
+  "include": [
+    "src/*.ts"
+  ],
+  "exclude": [
+    "node_modules"
+  ]
+}
