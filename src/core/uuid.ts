@@ -1,4 +1,4 @@
-import { v4, validate } from 'uuid';
+import { v4, v5, validate } from 'uuid';
 
 export class Uuid {
   readonly value: string;
@@ -23,7 +23,15 @@ export class Uuid {
     return validate(value);
   }
 
+  static fromSeed(seed: string, nameSpace: string): Uuid {
+    return new Uuid(v5(seed, nameSpace));
+  }
+
   toString(): string {
+    return this.value;
+  }
+
+  toJSON(): string {
     return this.value;
   }
 }
