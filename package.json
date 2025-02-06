@@ -6,7 +6,8 @@
   "types": "dist/index.d.ts",
   "module": "dist/index.js",
   "scripts": {
-    "build": "tsc"
+    "build": "tsc",
+    "test": "cross-env NODE_ENV=test vitest --run --exclude '**/*.test.ts'"
   },
   "type": "module",
   "homepage": "https://github.com/wave-telecom/wave-tech-framework",
