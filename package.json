@@ -9,9 +9,10 @@
     "build": "tsc"
   },
   "type": "module",
+  "homepage": "https://github.com/wave-telecom/wave-tech-framework",
   "repository": {
     "type": "git",
-    "url": "github.com/wave-telecom/wave-tech-framework"
+    "url": "https://github.com/wave-telecom/wave-tech-framework"
   },
   "author": "",
   "license": "Apache-2.0",
