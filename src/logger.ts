@@ -2,7 +2,6 @@ import type winston from 'winston';
 import { createLogger, format, transports } from 'winston';
 import { getHookCorrelationId } from './hooks';
 
-
 type Severity = 'debug' | 'info' | 'http' | 'warn' | 'error';
 
 export class WinstonLogger {
@@ -38,14 +37,27 @@ export class WinstonLogger {
 }
 
 export class Logger {
-    private static loggerInstance = WinstonLogger.getInstance();
+    private static loggerInstance: winston.Logger | undefined;
 
-    static log(
+    private constructor() { }
+
+    static initialize(serviceName: string) {
+        if (this.loggerInstance) return;
+        this.loggerInstance = WinstonLogger.getInstance(serviceName);
+    }
+
+    private static getLogger() {
+        if (!this.loggerInstance) throw new Error('Logger not initialized');
+        return this.loggerInstance;
+    }
+
+    private static log(
         severity: Severity,
         message: string,
         meta?: Record<string, unknown>,
         err?: unknown
     ) {
+        const logger = this.getLogger();
         const errorMsg = err instanceof Error ? `Error: ${err.message}` : '';
         const errObject = err instanceof Error ?
             {
@@ -58,7 +70,7 @@ export class Logger {
         const correlationId = getHookCorrelationId();
         const logMessage = `${message}. ${errorMsg}`;
         const metaObj = { ...meta, err: errObject, correlationId };
-        this.loggerInstance.log(severity, logMessage, metaObj);
+        logger.log(severity, logMessage, metaObj);
     }
 
     static debug(message: string, meta?: Record<string, unknown>, err?: unknown) {
