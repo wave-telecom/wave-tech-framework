@@ -1,6 +1,6 @@
 {
   "name": "@wave-telecom/framework",
-  "version": "1.0.10",
+  "version": "1.0.11",
   "description": "wave tech team shared utils framework",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -9,7 +9,7 @@
     "build": "tsc",
     "test": "cross-env NODE_ENV=test vitest --run --exclude '**/*.test.ts'"
   },
-  "type": "module",
+  "type": "commonjs",
   "homepage": "https://github.com/wave-telecom/wave-tech-framework",
   "repository": {
     "type": "git",
