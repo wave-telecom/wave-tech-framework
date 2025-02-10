@@ -1,6 +1,6 @@
 import type { NextFunction, Request, Response } from 'express';
-import { Uuid } from 'src/core/uuid';
-import { setHookContext, setHookCorrelationId, setHookTenantId } from 'src/hooks';
+import { Uuid } from '../core/uuid';
+import { setHookContext, setHookCorrelationId, setHookTenantId } from '../hooks';
 
 export const setContext = (req: Request, res: Response, next: NextFunction) => {
     setHookContext(() => { next(); });
