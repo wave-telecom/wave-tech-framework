@@ -10,6 +10,8 @@
     "lint:fix": "eslint --fix",
     "build": "tsc -p tsconfig.prod.json",
     "test": "cross-env NODE_ENV=test vitest --run --exclude '**/*.test.ts'",
+    "test:dev": "cross-env NODE_ENV=test vitest watch --exclude '**/*.test.ts'",
+    "test:integration": "cross-env NODE_ENV=test vitest --run --exclude '**/*.spec.ts'",
     "prepare": "husky"
   },
   "type": "commonjs",
