@@ -8,7 +8,7 @@
   "scripts": {
     "lint": "eslint",
     "lint:fix": "eslint --fix",
-    "build": "tsc",
+    "build": "tsc -p tsconfig.prod.json",
     "test": "cross-env NODE_ENV=test vitest --run --exclude '**/*.test.ts'",
     "prepare": "husky"
   },
