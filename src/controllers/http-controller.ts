@@ -1,8 +1,8 @@
 import { type Request, type Response } from 'express';
 import type { z } from 'zod';
-import { UseCase } from '../core/use-case';
+import type { UseCase } from '../core/use-case';
 import { BaseController } from './base-controller';
-import { ControllerErrors } from './controller-errors';
+import type { ControllerErrors } from './controller-errors';
 import { formatValidationErrors } from './validation-errors';
 
 export class HttpController<T> extends BaseController {

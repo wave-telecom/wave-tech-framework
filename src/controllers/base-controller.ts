@@ -1,6 +1,6 @@
 import type * as express from 'express';
 import { Logger } from '../logger';
-import { ValidationError } from './validation-errors';
+import type { ValidationError } from './validation-errors';
 
 export abstract class BaseController {
   protected abstract executeImpl(
