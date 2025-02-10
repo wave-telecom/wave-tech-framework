@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'vitest';
-import { validateCnpj, validateCpf, validateCpfCnpj } from './taxid';
+import { validateCnpj, validateCpf, validateCpfCnpj } from '../../../src/core/tax-id/tax-id';
 
 describe('utils tax id', () => {
   describe('validateCpf function', () => {

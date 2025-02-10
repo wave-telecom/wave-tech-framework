@@ -3,7 +3,7 @@ export * from './logger'
 export * from './core/result'
 export type * from './core/use-case'
 export * from './core/uuid'
-export * from './core/taxid/taxid'
+export * from './core/tax-id/tax-id'
 export * from './core/masks/brazilian-masks'
 
 export * from './controllers/base-controller'
