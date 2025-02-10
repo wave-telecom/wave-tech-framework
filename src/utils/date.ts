@@ -4,7 +4,7 @@ import { fillWithZeros } from './format';
 const MILLISECONDS_IN_A_DAY = 1000 * 60 * 60 * 24;
 
 export function getPeriodFromMonthAndYear(
-    referenceYear: number, referenceMonth: number
+  referenceYear: number, referenceMonth: number
 ): { startDate: Date; endDate: Date; } {
   let endMonth: number;
   let endYear: number;
@@ -49,8 +49,8 @@ export function addDaysToDate(date: Date, days: number): Date {
   return dateToAdd;
 }
 
-interface splittedDate { day: number; month: number; year: number; }
-export function splitDate(date: Date): splittedDate {
+interface SplittedDate { day: number; month: number; year: number; }
+export function splitDate(date: Date): SplittedDate {
   return {
     day: date.getDate(),
     month: date.getMonth(),
@@ -169,6 +169,6 @@ export function convertToLocal(data: string): string {
   const hora = ('0' + (dataLocal.getUTCHours() - 3)).slice(-2);
   const minuto = ('0' + dataLocal.getUTCMinutes()).slice(-2);
   const segundo = ('0' + dataLocal.getUTCSeconds()).slice(-2);
-  
+
   return `${ano}-${mes}-${dia}T${hora}:${minuto}:${segundo}Z`;
 }

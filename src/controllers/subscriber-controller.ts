@@ -3,7 +3,7 @@ import type { z } from 'zod';
 import type { UseCase } from '../core/use-case';
 import { Logger } from '../logger';
 import { BaseController } from './base-controller';
-import { ControllerErrors } from './controller-errors';
+import type { ControllerErrors } from './controller-errors';
 import { formatValidationErrors } from './validation-errors';
 
 export class SubscriberController<T> extends BaseController {
