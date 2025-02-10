@@ -21,3 +21,24 @@ export const getHookCorrelationId = () => {
     const context = getHookContext();
     return context.get('correlationId');
 };
+
+export const setHookContext = (callback: (...args: unknown[]) => void) => {
+    asyncStorage.run(getHookContext(), callback);
+};
+
+export const setHookCorrelationId = (correlationId: string) => {
+    const context = getHookContext();
+    context.set('correlationId', correlationId);
+};
+
+export const setHookTenantId = (tenantId: string) => {
+    const context = getHookContext();
+    context.set('tenantId', tenantId);
+};
+
+export const getHookTenantId = () => {
+    const context = getHookContext();
+    const tenantId = context.get('tenantId');
+    if (!tenantId) throw new Error('Tenant ID not found');
+    return tenantId;
+};
