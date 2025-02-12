@@ -63,7 +63,7 @@ npm install @wave-telecom/framework
 
 2. Import the resources you need
 ```typescript
-import { Logger } from '@wave-telecom/framework';
+import { Logger } from '@wave-telecom/framework/core';
 ```
 
 3. Use the package
