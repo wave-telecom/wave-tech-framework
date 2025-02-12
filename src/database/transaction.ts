@@ -1,7 +1,7 @@
 import type { PrismaClient } from '@prisma/client';
 
-type PrismaTransaction = Omit<PrismaClient, '$connect' | '$disconnect' | '$on' | '$transaction' | '$use' | '$extends'>;
-type TransactionCallback<T> = (tx: PrismaTransaction) => Promise<T | T[]>;
+export type PrismaTransaction = Omit<PrismaClient, '$connect' | '$disconnect' | '$on' | '$transaction' | '$use' | '$extends'>;
+export type TransactionCallback<T> = (tx: PrismaTransaction) => Promise<T | T[]>;
 
 export interface DatabaseTransactionManager {
   execute: <T>(action: TransactionCallback<T>, timeout?: number) => Promise<T | T[]>;

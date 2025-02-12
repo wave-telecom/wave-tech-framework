@@ -19,3 +19,6 @@ export * from './utils/math'
 export * from './utils/parser'
 
 export * from './middlewares/context'
+
+export type * from './database/transaction'
+export * from './database/transaction'
