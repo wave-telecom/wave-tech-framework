@@ -58,7 +58,7 @@ Below are the steps you need to follow to install the framework.
 
 1. Install the package
 ```typescript
-npm install @wave-telecom/framework
+pnpm install @wave-telecom/framework
 ```
 
 2. Import the resources you need
