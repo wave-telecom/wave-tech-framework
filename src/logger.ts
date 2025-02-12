@@ -47,7 +47,7 @@ export class Logger {
     }
 
     private static getLogger() {
-        if (!this.loggerInstance) throw new Error('Logger not initialized');
+        if (!this.loggerInstance) this.initialize('app');
         return this.loggerInstance;
     }
 
@@ -70,7 +70,7 @@ export class Logger {
         const correlationId = getHookCorrelationId();
         const logMessage = `${message}. ${errorMsg}`;
         const metaObj = { ...meta, err: errObject, correlationId };
-        logger.log(severity, logMessage, metaObj);
+        logger!.log(severity, logMessage, metaObj);
     }
 
     static debug(message: string, meta?: Record<string, unknown>, err?: unknown) {
