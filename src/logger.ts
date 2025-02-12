@@ -1,11 +1,10 @@
-import type winston from 'winston';
+import type { Logger as WinstonLoggerInstance } from 'winston';
 import { createLogger, format, transports } from 'winston';
 import { getHookCorrelationId } from './hooks';
-
 type Severity = 'debug' | 'info' | 'http' | 'warn' | 'error';
 
 export class WinstonLogger {
-    private static instance: winston.Logger | undefined;
+    private static instance: WinstonLoggerInstance | undefined;
 
     static getInstance(serviceName?: string) {
         if (!this.instance) {
@@ -37,9 +36,14 @@ export class WinstonLogger {
 }
 
 export class Logger {
-    private static loggerInstance: winston.Logger | undefined;
+    private static loggerInstance: WinstonLoggerInstance | undefined;
 
     private constructor() { }
+
+    static {
+        const env = process.env.NODE_ENV;
+        if (env && ['local', 'test'].includes(env)) this.initialize('local-service');
+    }
 
     static initialize(serviceName: string) {
         if (this.loggerInstance) return;
