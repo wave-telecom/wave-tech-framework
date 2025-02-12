@@ -33,6 +33,8 @@ jobs:
 
       - name: Install PNPM
         uses: pnpm/action-setup@v4
+        with:
+        version: 10
 
       - name: Install Dependencies
         run: pnpm install
