@@ -1,7 +1,7 @@
 import type { Request, Response } from 'express';
 import type { z } from 'zod';
+import { Logger } from '../core/logger';
 import type { UseCase } from '../core/use-case';
-import { Logger } from '../logger';
 import { BaseController } from './base-controller';
 import type { ControllerErrors } from './controller-errors';
 import { formatValidationErrors } from './validation-errors';

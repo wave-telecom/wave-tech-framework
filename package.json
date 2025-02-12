@@ -56,5 +56,27 @@
       "esbuild",
       "@prisma/client"
     ]
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "require": "./dist/index.js"
+    },
+    "./core": {
+      "types": "./dist/core/index.d.ts",
+      "require": "./dist/core/index.js"
+    },
+    "./controllers": {
+      "types": "./dist/controllers/index.d.ts",
+      "require": "./dist/controllers/index.js"
+    },
+    "./utils": {
+      "types": "./dist/utils/index.d.ts",
+      "require": "./dist/utils/index.js"
+    },
+    "./middlewares": {
+      "types": "./dist/middlewares/index.d.ts",
+      "require": "./dist/middlewares/index.js"
+    }
   }
 }
