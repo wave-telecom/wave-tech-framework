@@ -77,6 +77,10 @@
     "./middlewares": {
       "types": "./dist/middlewares/index.d.ts",
       "require": "./dist/middlewares/index.js"
+    },
+    "./database": {
+      "types": "./dist/database/index.d.ts",
+      "require": "./dist/database/index.js"
     }
   }
 }
