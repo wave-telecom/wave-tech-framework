@@ -56,9 +56,9 @@ This is a guide to help you get started with the Wave Tech Shared Framework.
 ### Installation
 Below are the steps you need to follow to install the framework.
 
-1. Install the package
+1. Install the package with a package manager of your choice (npm, pnpm, yarn, etc.)
 ```typescript
-pnpm install @wave-telecom/framework
+npm install @wave-telecom/framework
 ```
 
 2. Import the resources you need
