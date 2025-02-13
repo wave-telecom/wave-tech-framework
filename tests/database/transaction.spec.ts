@@ -1,8 +1,8 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import type { PrismaClient } from '@prisma/client';
-import { PrismaTransactionManagerImpl } from 'src/database/transaction';
 import { describe, expect, it } from 'vitest';
 import { mockDeep } from 'vitest-mock-extended';
+import { PrismaTransactionManagerImpl } from '../../src/database/transaction';
 
 describe('prisma transaction manager', () => {
   const prismaClient = mockDeep<PrismaClient>();

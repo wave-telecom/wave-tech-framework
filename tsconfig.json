@@ -32,8 +32,9 @@
     "files": true
   },
   "include": [
-    "src/*.ts",
-    "src/**/*.ts",
+    "./src",
+    "./tests",
+    "src/**/*/ts",
     "tests/**/*.ts"
   ],
   "exclude": [
