@@ -64,23 +64,47 @@
     },
     "./core": {
       "types": "./dist/core/index.d.ts",
-      "require": "./dist/core/index.js"
+      "require": "./dist/core/index.js",
+      "default": "./dist/core/index.js"
     },
     "./controllers": {
       "types": "./dist/controllers/index.d.ts",
-      "require": "./dist/controllers/index.js"
+      "require": "./dist/controllers/index.js",
+      "default": "./dist/controllers/index.js"
     },
     "./utils": {
       "types": "./dist/utils/index.d.ts",
-      "require": "./dist/utils/index.js"
+      "require": "./dist/utils/index.js",
+      "default": "./dist/utils/index.js"
     },
     "./middlewares": {
       "types": "./dist/middlewares/index.d.ts",
-      "require": "./dist/middlewares/index.js"
+      "require": "./dist/middlewares/index.js",
+      "default": "./dist/middlewares/index.js"
     },
     "./database": {
       "types": "./dist/database/index.d.ts",
-      "require": "./dist/database/index.js"
+      "require": "./dist/database/index.js",
+      "default": "./dist/database/index.js"
+    }
+  },
+  "typesVersions": {
+    "*": {
+      "core": [
+        "./dist/core/index.d.ts"
+      ],
+      "controllers": [
+        "./dist/controllers/index.d.ts"
+      ],
+      "utils": [
+        "./dist/utils/index.d.ts"
+      ],
+      "middlewares": [
+        "./dist/middlewares/index.d.ts"
+      ],
+      "database": [
+        "./dist/database/index.d.ts"
+      ]
     }
   }
 }
