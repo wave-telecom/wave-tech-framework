@@ -20,8 +20,10 @@ export const setCorrelationId = (req: Request, res: Response, next: NextFunction
     next();
 };
 
-export const setTenantId = (req: Request, res: Response, next: NextFunction) => {
-    const tenantId = req.headers['x-tenant-id'] as string;
-    setHookTenantId(tenantId);
-    next();
+export const setTenantId = (defaultTenantId: string) => {
+    return (req: Request, res: Response, next: NextFunction) => {
+        const tenantId = req.headers['x-tenant-id'] as string | undefined;
+        setHookTenantId(tenantId ?? defaultTenantId);
+        next();
+    };
 };
