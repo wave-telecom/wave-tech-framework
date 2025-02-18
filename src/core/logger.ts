@@ -4,6 +4,8 @@ import { getHookCorrelationId } from './hooks';
 
 type Severity = 'debug' | 'info' | 'http' | 'warn' | 'error';
 
+type LogMetadata = Record<string, unknown> & { notify?: boolean };
+
 export class WinstonLogger {
     private static instance: winston.Logger | undefined;
 
@@ -85,11 +87,19 @@ export class Logger {
         this.log('http', message, meta, err);
     }
 
-    static warn(message: string, meta?: Record<string, unknown>, err?: unknown) {
-        this.log('warn', message, meta, err);
+    static warn(message: string, meta?: LogMetadata, err?: unknown) {
+        this.log('warn', message, this.formatMetadata(meta), err);
     }
 
-    static error(message: string, meta?: Record<string, unknown>, err?: unknown) {
-        this.log('error', message, meta, err);
+    static error(message: string, meta?: LogMetadata, err?: unknown) {
+        this.log('error', message, this.formatMetadata(meta), err);
+    }
+
+    private static formatMetadata(meta?: Partial<LogMetadata>) {
+        return {
+            ...meta,
+            notify: meta?.notify || false,
+            jsonString: meta ? JSON.stringify(meta) : undefined,
+        };
     }
 }
