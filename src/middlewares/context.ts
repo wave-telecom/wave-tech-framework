@@ -20,10 +20,11 @@ export const setCorrelationId = (req: Request, res: Response, next: NextFunction
     next();
 };
 
-export const setTenantId = (defaultTenantId: string) => {
+export const setTenantId = (defaultTenantId?: string) => {
     return (req: Request, res: Response, next: NextFunction) => {
-        const tenantId = req.headers['x-tenant-id'] as string | undefined;
-        setHookTenantId(tenantId ?? defaultTenantId);
+        const tenantId = req.headers['x-tenant-id'] as string | undefined ?? defaultTenantId;
+        if (!tenantId) throw new Error('Tenant ID is required, but it is not present in the request headers');
+        setHookTenantId(tenantId);
         next();
     };
 };

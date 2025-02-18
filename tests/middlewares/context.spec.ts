@@ -115,5 +115,12 @@ describe('Context Middleware', () => {
       expect(hooks.setHookTenantId).toHaveBeenCalledWith(defaultTenantId);
       expect(mockNext).toHaveBeenCalled();
     });
+
+    it('should throw an error if tenant ID is not provided in header nor default tenant ID', () => {
+      const middleware = setTenantId();
+      expect(() => {
+        middleware(mockRequest as Request, mockResponse as Response, mockNext)
+      }).toThrow('Tenant ID is required, but it is not present in the request headers');
+    });
   });
 });
