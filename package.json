@@ -1,6 +1,6 @@
 {
   "name": "@wave-telecom/framework",
-  "version": "2.0.5",
+  "version": "2.0.6",
   "description": "wave tech team shared utils framework",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
