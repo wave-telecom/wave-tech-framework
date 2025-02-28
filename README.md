@@ -82,9 +82,14 @@ If you have any suggestions, ideas or feedback, please feel free to open an issu
 
 1. Fork the repository
 2. Create a new branch for your feature (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request.
+3. Test the library locally
+    - Build the library with your changes (`pnpm run build`)
+    - Copy the local path of the library directory (`pwd`)
+    - Install the local library in the local consumer application (`npm i </path/to/wave-tech/framework>`)
+    - Test the library in the consumer application.
+4. Commit your changes (`git commit -m 'Add amazing feature'`)
+5. Push to the branch (`git push origin feature/amazing-feature`)
+6. Open a Pull Request.
 
 <!-- MARKDOWN LINKS & IMAGES -->
 <!-- https://www.markdownguide.org/basic-syntax/#reference-style-links -->
