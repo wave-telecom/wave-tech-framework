@@ -1,2 +1,2 @@
-export * from "./context";
-export * from "./gpc-authentication";
+export * from './context';
+export * from './gpc-authentication';
