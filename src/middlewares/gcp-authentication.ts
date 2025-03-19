@@ -1,13 +1,13 @@
 import type { Request, Response, NextFunction } from 'express';
 import type { OAuth2Client } from 'google-auth-library';
-import { Logger } from 'src/core';
+import { Logger } from './../core';
 
 export function gcpAuthenticationMiddleware(
   oauth2Client: OAuth2Client,
-  config: { audience: string; pubSubServiceAccountEmail: string }
+  config: { audience: string; gcpServiceAccountEmail: string }
 ) {
   const AUDIENCE = config.audience;
-  const GCP_SERVICE_ACCOUNT_EMAIL = config.pubSubServiceAccountEmail;
+  const GCP_SERVICE_ACCOUNT_EMAIL = config.gcpServiceAccountEmail;
 
   return async (req: Request, res: Response, next: NextFunction) => {
     try {
