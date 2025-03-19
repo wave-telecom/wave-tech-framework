@@ -7,7 +7,7 @@ export function gcpAuthenticationMiddleware(
   config: { audience: string; pubSubServiceAccountEmail: string }
 ) {
   const AUDIENCE = config.audience;
-  const PUBSUB_SERVICE_ACCOUNT_EMAIL = config.pubSubServiceAccountEmail;
+  const GCP_SERVICE_ACCOUNT_EMAIL = config.pubSubServiceAccountEmail;
 
   return async (req: Request, res: Response, next: NextFunction) => {
     try {
@@ -23,12 +23,12 @@ export function gcpAuthenticationMiddleware(
         return;
       }
 
-      const ticket = await oauth2Client.verifyIdToken({
+      const verifiedToken = await oauth2Client.verifyIdToken({
         idToken: token,
         audience: AUDIENCE,
       });
 
-      const payload = ticket.getPayload();
+      const payload = verifiedToken.getPayload();
       if (!payload) {
         Logger.error('Invalid token payload', {});
         res.status(401).send('Unauthorized: Invalid token payload');
@@ -50,7 +50,7 @@ export function gcpAuthenticationMiddleware(
         return;
       }
 
-      if (payload.email !== PUBSUB_SERVICE_ACCOUNT_EMAIL) {
+      if (payload.email !== GCP_SERVICE_ACCOUNT_EMAIL) {
         Logger.error('Invalid token service account email', { payload });
         res
           .status(401)
