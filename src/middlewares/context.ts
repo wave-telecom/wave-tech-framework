@@ -1,4 +1,5 @@
 import type { NextFunction, Request, Response } from 'express';
+import type { Context, Next } from 'hono';
 import { setHookContext, setHookCorrelationId, setHookTenantId } from '../core/hooks';
 import { Uuid } from '../core/uuid';
 
@@ -26,5 +27,30 @@ export const setTenantId = (defaultTenantId?: string) => {
         if (!tenantId) throw new Error('Tenant ID is required, but it is not present in the request headers');
         setHookTenantId(tenantId);
         next();
+    };
+};
+
+export const setContextHono = async (ctx: Context, next: Next) => {
+    await setHookContext(() => next());
+};
+
+export const setCorrelationIdHono = (ctx: Context, next: Next) => {
+    const correlationIdHeader = ctx.req.header('x-correlation-id');
+    let correlationId = correlationIdHeader;
+
+    if (!correlationId) {
+        correlationId = Uuid.random().value;
+    }
+
+    setHookCorrelationId(correlationId);
+    return next();
+};
+
+export const setTenantIdHono = (defaultTenantId?: string) => {
+    return async (ctx: Context, next: Next) => {
+        const tenantId = ctx.req.header('x-tenant-id') ?? defaultTenantId;
+        if (!tenantId) throw new Error('Tenant ID is required, but it is not present in the request headers');
+        setHookTenantId(tenantId);
+        await next();
     };
 };
