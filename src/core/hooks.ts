@@ -22,8 +22,8 @@ export const getHookCorrelationId = () => {
     return context.get('correlationId');
 };
 
-export const setHookContext = (callback: (...args: unknown[]) => void) => {
-    asyncStorage.run(getHookContext(), callback);
+export const setHookContext = <R>(callback: (...args: unknown[]) => R): R => {
+    return asyncStorage.run(getHookContext(), callback);
 };
 
 export const setHookCorrelationId = (correlationId: string) => {
