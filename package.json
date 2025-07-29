@@ -88,6 +88,11 @@
       "types": "./dist/database/index.d.ts",
       "require": "./dist/database/index.js",
       "default": "./dist/database/index.js"
+    },
+    "./clients": {
+      "types": "./dist/clients/index.d.ts",
+      "require": "./dist/clients/index.js",
+      "default": "./dist/clients/index.js"
     }
   },
   "typesVersions": {
@@ -106,6 +111,9 @@
       ],
       "database": [
         "./dist/database/index.d.ts"
+      ],
+      "clients": [
+        "./dist/clients/index.d.ts"
       ]
     }
   }
