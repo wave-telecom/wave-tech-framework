@@ -30,7 +30,7 @@ describe('client open-cep', () => {
 
     vi.stubGlobal('fetch', mockedFetch)
 
-    const client = new OpenCepAPIClientImpl('https://opencep.com')
+    const client = new OpenCepAPIClientImpl()
 
     const result = await client.getCep('12345678')
 
@@ -46,7 +46,7 @@ describe('client open-cep', () => {
 
     vi.stubGlobal('fetch', mockedFetch)
 
-    const client = new OpenCepAPIClientImpl('https://opencep.com')
+    const client = new OpenCepAPIClientImpl()
     await client.getCep('12345678')
     expect(mockedWarnLogger).toBeCalledWith({ message: 'Network Error' })
   })
