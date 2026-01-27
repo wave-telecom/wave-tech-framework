@@ -22,7 +22,7 @@ importers:
         version: 9.15.1
       hono:
         specifier: ^4.8.5
-        version: 4.8.5
+        version: 4.11.7
       mathjs:
         specifier: ^14.2.1
         version: 14.2.1
@@ -1250,8 +1250,8 @@ packages:
     resolution: {integrity: sha512-0hJU9SCPvmMzIBdZFqNPXWa6dqh7WdH0cII9y+CyS8rG3nL48Bclra9HmKhVVUHyPWNH5Y7xDwAB7bfgSjkUMQ==}
     engines: {node: '>= 0.4'}
 
-  hono@4.8.5:
-    resolution: {integrity: sha512-Up2cQbtNz1s111qpnnECdTGqSIUIhZJMLikdKkshebQSEBcoUKq6XJayLGqSZWidiH0zfHRCJqFu062Mz5UuRA==}
+  hono@4.11.7:
+    resolution: {integrity: sha512-l7qMiNee7t82bH3SeyUCt9UF15EVmaBvsppY2zQtrbIhl/yzBTny+YUxsVjSjQ6gaqaeVtZmGocom8TzBlA4Yw==}
     engines: {node: '>=16.9.0'}
 
   http-errors@2.0.0:
@@ -3387,7 +3387,7 @@ snapshots:
     dependencies:
       function-bind: 1.1.2
 
-  hono@4.8.5: {}
+  hono@4.11.7: {}
 
   http-errors@2.0.0:
     dependencies:
