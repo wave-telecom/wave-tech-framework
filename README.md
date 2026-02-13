@@ -58,12 +58,12 @@ Below are the steps you need to follow to install the framework.
 
 1. Install the package with a package manager of your choice (npm, pnpm, yarn, etc.)
 ```typescript
-npm install @wave-telecom/framework
+npm install @wave-tech/framework
 ```
 
 2. Import the resources you need
 ```typescript
-import { Logger } from '@wave-telecom/framework/core';
+import { Logger } from '@wave-tech/framework/core';
 ```
 
 3. Use the package
