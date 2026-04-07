@@ -30,8 +30,10 @@ export function validateCpf(cpf: string): boolean {
   return true;
 }
 
-export function validateCnpj(cnpj: string): boolean {
-  if (!cnpj || cnpj.length !== 14 ||
+const CNPJ_FORMAT = /^[0-9A-Z]{12}[0-9]{2}$/;
+
+function isInvalidCnpjFormat(cnpj: string): boolean {
+  return !CNPJ_FORMAT.test(cnpj) ||
     cnpj == '00000000000000' ||
     cnpj == '11111111111111' ||
     cnpj == '22222222222222' ||
@@ -41,16 +43,21 @@ export function validateCnpj(cnpj: string): boolean {
     cnpj == '66666666666666' ||
     cnpj == '77777777777777' ||
     cnpj == '88888888888888' ||
-    cnpj == '99999999999999') {
-    return false;
-  }
+    cnpj == '99999999999999';
+}
+
+export function validateCnpj(cnpj: string): boolean {
+  cnpj = cnpj.replace(/[.\-/]/g, '');
+  if (!cnpj || cnpj.length !== 14) return false;
+  cnpj = cnpj.toUpperCase();
+  if (isInvalidCnpjFormat(cnpj)) return false;
   let tamanho = cnpj.length - 2;
   let numeros = cnpj.substring(0, tamanho);
   const digitos = cnpj.substring(tamanho);
   let soma = 0;
   let pos = tamanho - 7;
   for (let i = tamanho; i >= 1; i--) {
-    soma += parseInt(numeros.charAt(tamanho - i)) * pos--;
+    soma += (numeros.charCodeAt(tamanho - i) - 48) * pos--;
     if (pos < 2) pos = 9;
   }
   let resultado = soma % 11 < 2 ? 0 : 11 - soma % 11;
@@ -60,7 +67,7 @@ export function validateCnpj(cnpj: string): boolean {
   soma = 0;
   pos = tamanho - 7;
   for (let i = tamanho; i >= 1; i--) {
-    soma += parseInt(numeros.charAt(tamanho - i)) * pos--;
+    soma += (numeros.charCodeAt(tamanho - i) - 48) * pos--;
     if (pos < 2) pos = 9;
   }
   resultado = soma % 11 < 2 ? 0 : 11 - soma % 11;
