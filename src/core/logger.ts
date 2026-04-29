@@ -1,6 +1,6 @@
 import type winston from 'winston';
 import { createLogger, format, transports } from 'winston';
-import { getHookCorrelationId } from './hooks';
+import { getHookCorrelationId, getHookLogMetadata } from './hooks';
 
 type Severity = 'debug' | 'info' | 'http' | 'warn' | 'error';
 
@@ -70,8 +70,9 @@ export class Logger {
             JSON.stringify(err);
 
         const correlationId = getHookCorrelationId();
+        const hookMeta = getHookLogMetadata();
         const logMessage = `${message}. ${errorMsg}`;
-        const metaObj = { ...meta, err: errObject, correlationId };
+        const metaObj = { ...hookMeta, ...meta, err: errObject, correlationId };
         logger!.log(severity, logMessage, metaObj);
     }
 
