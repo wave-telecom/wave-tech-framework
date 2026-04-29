@@ -50,5 +50,8 @@ jobs:
       - name: Build
         run: pnpm run build
 
+      - name: Upgrade NPM
+        run: npm install -g npm@latest
+
       - name: Publish
-        run: npm publish
+        run: npm publish --provenance
