@@ -48,6 +48,15 @@ describe('setHookLogMetadata', () => {
         expect(getHookLogMetadata()).toEqual({});
     });
 
+    it('key/value overload — skips null/undefined value', () => {
+        setHookContext(() => {
+            setHookLogMetadata({ a: 1 });
+            setHookLogMetadata('b', undefined);
+            setHookLogMetadata('c', null);
+            expect(getHookLogMetadata()).toEqual({ a: 1 });
+        });
+    });
+
     it('isolates metadata between parallel ALS zones', async () => {
         const captured: Record<string, unknown>[] = [];
         await Promise.all([

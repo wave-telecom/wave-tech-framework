@@ -50,14 +50,15 @@ export function setHookLogMetadata(
     keyOrMetadata: string | Record<string, unknown>,
     value?: unknown
 ): void {
+    const patch =
+        typeof keyOrMetadata === 'string'
+            ? value == null ? null : { [keyOrMetadata]: value }
+            : keyOrMetadata;
+    if (!patch) return;
     const context = getHookContext();
     const current =
         (context.get('logMetadata') as Record<string, unknown> | undefined) ?? {};
-    const next =
-        typeof keyOrMetadata === 'string'
-            ? { ...current, [keyOrMetadata]: value }
-            : { ...current, ...keyOrMetadata };
-    context.set('logMetadata', next);
+    context.set('logMetadata', { ...current, ...patch });
 }
 
 export const getHookLogMetadata = (): Record<string, unknown> => {
