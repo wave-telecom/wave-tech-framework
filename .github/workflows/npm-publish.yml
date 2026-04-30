@@ -51,7 +51,9 @@ jobs:
         run: pnpm run build
 
       - name: Upgrade NPM
-        run: npm install -g npm@latest
+        run: |
+          corepack enable
+          corepack prepare npm@latest --activate
 
       - name: Publish
         run: npm publish --provenance
