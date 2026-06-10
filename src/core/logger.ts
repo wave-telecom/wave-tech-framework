@@ -6,10 +6,14 @@ type Severity = 'debug' | 'info' | 'http' | 'warn' | 'error';
 
 type LogMetadata = Record<string, unknown> & { notify?: boolean };
 
+export interface LoggerOptions {
+    transports?: winston.transport[];
+}
+
 export class WinstonLogger {
     private static instance: winston.Logger | undefined;
 
-    static getInstance(serviceName?: string) {
+    static getInstance(serviceName?: string, additionalTransports: winston.transport[] = []) {
         if (!this.instance) {
             this.instance = createLogger({
                 level: 'http',
@@ -31,6 +35,7 @@ export class WinstonLogger {
                 },
                 transports: [
                     new transports.Console(),
+                    ...additionalTransports,
                 ],
             });
         }
@@ -43,9 +48,9 @@ export class Logger {
 
     private constructor() { }
 
-    static initialize(serviceName: string) {
+    static initialize(serviceName: string, options?: LoggerOptions) {
         if (this.loggerInstance) return;
-        this.loggerInstance = WinstonLogger.getInstance(serviceName);
+        this.loggerInstance = WinstonLogger.getInstance(serviceName, options?.transports);
     }
 
     private static getLogger() {
