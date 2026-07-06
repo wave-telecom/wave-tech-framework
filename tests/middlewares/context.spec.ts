@@ -5,7 +5,7 @@ import type { Mock } from 'vitest';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import * as hooks from '../../src/core/hooks';
 import { Uuid } from '../../src/core/uuid';
-import { setContext, setContextHono, setCorrelationId, setCorrelationIdHono, setTenantId, setTenantIdHono } from '../../src/middlewares/context';
+import { setContext, setContextHono, setCorrelationId, setCorrelationIdHono, setTenantId, setTenantIdHono, setUserId, setUserIdHono } from '../../src/middlewares/context';
 
 // Mock dependencies
 vi.mock('../../src/core/hooks');
@@ -125,6 +125,27 @@ describe('Express Context Middleware', () => {
       }).toThrow('Tenant ID is required, but it is not present in the request headers');
     });
   });
+
+  describe('set user id', () => {
+    it('should use user ID from header', () => {
+      const testUserId = 'test-user';
+      mockRequest.headers = {
+        'x-user-id': testUserId
+      };
+
+      setUserId(mockRequest as Request, mockResponse as Response, mockNext);
+
+      expect(hooks.setHookUserId).toHaveBeenCalledWith(testUserId);
+      expect(mockNext).toHaveBeenCalled();
+    });
+
+    it('should not set user ID if none provided in header', () => {
+      setUserId(mockRequest as Request, mockResponse as Response, mockNext);
+
+      expect(hooks.setHookUserId).not.toHaveBeenCalled();
+      expect(mockNext).toHaveBeenCalled();
+    });
+  });
 });
 
 describe('Hono Context Middleware', () => {
@@ -204,6 +225,28 @@ describe('Hono Context Middleware', () => {
       const middleware = setTenantIdHono();
       await expect(middleware(mockContext as Context, mockNext))
         .rejects.toThrow('Tenant ID is required, but it is not present in the request headers');
+    });
+  });
+
+  describe('setUserIdHono', () => {
+    it('should use user ID from header', async () => {
+      const testUserId = 'test-user';
+      (mockContext.req!.header as Mock).mockReturnValue(testUserId);
+
+      await setUserIdHono(mockContext as Context, mockNext);
+
+      expect(mockContext.req!.header).toHaveBeenCalledWith('x-user-id');
+      expect(hooks.setHookUserId).toHaveBeenCalledWith(testUserId);
+      expect(mockNext).toHaveBeenCalled();
+    });
+
+    it('should not set user ID if none provided in header', async () => {
+      (mockContext.req!.header as Mock).mockReturnValue(undefined);
+
+      await setUserIdHono(mockContext as Context, mockNext);
+
+      expect(hooks.setHookUserId).not.toHaveBeenCalled();
+      expect(mockNext).toHaveBeenCalled();
     });
   });
 });

@@ -3,6 +3,7 @@ import { AsyncLocalStorage } from 'node:async_hooks';
 interface HookContext {
     correlationId: string | undefined;
     tenantId: string | undefined;
+    userId: string | undefined;
     logMetadata: Record<string, unknown> | undefined;
 }
 
@@ -42,6 +43,16 @@ export const getHookTenantId = () => {
     const tenantId = context.get('tenantId') as string | undefined;
     if (!tenantId) throw new Error('Tenant ID not found');
     return tenantId;
+};
+
+export const setHookUserId = (userId: string) => {
+    const context = getHookContext();
+    context.set('userId', userId);
+};
+
+export const getHookUserId = (): string | undefined => {
+    const context = getHookContext();
+    return context.get('userId') as string | undefined;
 };
 
 export function setHookLogMetadata(metadata: Record<string, unknown>): void;
