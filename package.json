@@ -22,8 +22,10 @@
   },
   "author": "",
   "license": "Apache-2.0",
+  "peerDependencies": {
+    "@prisma/client": ">=6.3.1"
+  },
   "dependencies": {
-    "@prisma/client": "^6.3.1",
     "date-fns": "^4.1.0",
     "express": "^4.21.2",
     "google-auth-library": "^9.15.1",
@@ -35,6 +37,7 @@
   },
   "devDependencies": {
     "@eslint/js": "^9.20.0",
+    "@prisma/client": "^6.3.1",
     "@types/express": "^5.0.0",
     "@types/node": "^24.0.0",
     "@typescript-eslint/parser": "^8.24.0",
@@ -93,6 +96,11 @@
       "types": "./dist/clients/index.d.ts",
       "require": "./dist/clients/index.js",
       "default": "./dist/clients/index.js"
+    },
+    "./audit": {
+      "types": "./dist/audit/index.d.ts",
+      "require": "./dist/audit/index.js",
+      "default": "./dist/audit/index.js"
     }
   },
   "typesVersions": {
@@ -114,6 +122,9 @@
       ],
       "clients": [
         "./dist/clients/index.d.ts"
+      ],
+      "audit": [
+        "./dist/audit/index.d.ts"
       ]
     }
   }
