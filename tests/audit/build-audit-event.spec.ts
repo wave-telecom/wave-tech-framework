@@ -66,7 +66,7 @@ describe('buildAuditEvent', () => {
     expect(event.resourceId).toBe('42');
     expect(event.eventType).toBe('Audit.BrokerCreated');
     expect(event.payload.operation).toBe('CREATE');
-    expect(event.payload.actorId).toBe('user-1');
+    expect(event.payload.changedBy).toBe('user-1');
     expect(event.payload.correlationId).toBe('corr-1');
     expect(event.payload.changes).toBeNull();
     expect(event.payload.snapshot).toEqual({ id: 42, name: 'ACME' });

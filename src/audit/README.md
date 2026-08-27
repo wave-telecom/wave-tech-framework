@@ -133,7 +133,7 @@ desativar o namespace.
 {
   "operation": "CREATE | UPDATE | DELETE",
   "occurredAt": "2026-07-06T12:00:00.000Z",
-  "actorId": "user-123 | null",
+  "changedBy": "user-123 | null",
   "correlationId": "…",
   "changes": null,          // null em CREATE; { campo: { from, to } } em UPDATE (se diff on)
   "snapshot": { /* linha após a escrita (ou before em DELETE) */ }

@@ -104,7 +104,8 @@ export function buildAuditEvent({
     payload: {
       operation: op,
       occurredAt: new Date().toISOString(),
-      actorId: actor.actorId,
+      // Named after the change_history column it lands in downstream.
+      changedBy: actor.actorId,
       correlationId: actor.correlationId,
       changes: op === 'CREATE' || !computeDiff ? null : diff(before, after),
       snapshot: op === 'DELETE' ? toJsonSafe(before) : toJsonSafe(after),
