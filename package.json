@@ -23,7 +23,13 @@
   "author": "",
   "license": "Apache-2.0",
   "peerDependencies": {
+    "@dbos-inc/dbos-sdk": "^4.27.6",
     "@prisma/client": ">=6.3.1"
+  },
+  "peerDependenciesMeta": {
+    "@dbos-inc/dbos-sdk": {
+      "optional": true
+    }
   },
   "dependencies": {
     "date-fns": "^4.1.0",
@@ -36,6 +42,7 @@
     "zod": "^3.24.1"
   },
   "devDependencies": {
+    "@dbos-inc/dbos-sdk": "^4.27.6",
     "@eslint/js": "^9.20.0",
     "@prisma/client": "^6.3.1",
     "@types/express": "^5.0.0",
@@ -101,6 +108,16 @@
       "types": "./dist/audit/index.d.ts",
       "require": "./dist/audit/index.js",
       "default": "./dist/audit/index.js"
+    },
+    "./outbox-relay": {
+      "types": "./dist/outbox-relay/index.d.ts",
+      "require": "./dist/outbox-relay/index.js",
+      "default": "./dist/outbox-relay/index.js"
+    },
+    "./outbox-relay/dbos": {
+      "types": "./dist/outbox-relay/dbos/index.d.ts",
+      "require": "./dist/outbox-relay/dbos/index.js",
+      "default": "./dist/outbox-relay/dbos/index.js"
     }
   },
   "typesVersions": {
@@ -125,6 +142,12 @@
       ],
       "audit": [
         "./dist/audit/index.d.ts"
+      ],
+      "outbox-relay": [
+        "./dist/outbox-relay/index.d.ts"
+      ],
+      "outbox-relay/dbos": [
+        "./dist/outbox-relay/dbos/index.d.ts"
       ]
     }
   }
