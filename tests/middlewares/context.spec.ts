@@ -5,7 +5,7 @@ import type { Mock } from 'vitest';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import * as hooks from '../../src/core/hooks';
 import { Uuid } from '../../src/core/uuid';
-import { setContext, setContextHono, setCorrelationId, setCorrelationIdHono, setTenantId, setTenantIdHono, setUserId, setUserIdHono } from '../../src/middlewares/context';
+import { setContext, setContextHono, setCorrelationId, setCorrelationIdHono, setRequestChannel, setTenantId, setTenantIdHono, setUserId, setUserIdHono } from '../../src/middlewares/context';
 
 // Mock dependencies
 vi.mock('../../src/core/hooks');
@@ -143,6 +143,26 @@ describe('Express Context Middleware', () => {
       setUserId(mockRequest as Request, mockResponse as Response, mockNext);
 
       expect(hooks.setHookUserId).not.toHaveBeenCalled();
+      expect(mockNext).toHaveBeenCalled();
+    });
+  });
+
+  describe('set request channel', () => {
+    it('should use the request channel from the x-request-channel header', () => {
+      mockRequest.headers = {
+        'x-request-channel': 'console'
+      };
+
+      setRequestChannel(mockRequest as Request, mockResponse as Response, mockNext);
+
+      expect(hooks.setHookRequestChannel).toHaveBeenCalledWith('console');
+      expect(mockNext).toHaveBeenCalled();
+    });
+
+    it('should not set the request channel if none provided in header', () => {
+      setRequestChannel(mockRequest as Request, mockResponse as Response, mockNext);
+
+      expect(hooks.setHookRequestChannel).not.toHaveBeenCalled();
       expect(mockNext).toHaveBeenCalled();
     });
   });
