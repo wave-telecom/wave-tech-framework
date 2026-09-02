@@ -9,28 +9,34 @@ Dois entrypoints:
 
 | Subpath | Conteúdo | Dependência extra |
 |---|---|---|
-| `@wave-tech/framework/outbox-relay` | contratos (`RelayEvent`, `OutboxRelaySource`, `EventSink`), ciclo de drain (`OutboxRelayService`), sink HTTP da events-api (`HttpEventSink`), helpers de mapper (`promoteOccurredAt`, `promoteCorrelationId`) | nenhuma |
+| `@wave-tech/framework/outbox-relay` | contratos (`RelayEvent`, `OutboxRelaySource`, `EventSink`), ciclo de drain (`OutboxRelayService`), sink HTTP da events-api (`HttpEventSink`), **source padrão** (`PrismaOutboxRelaySource` + `toRelayEvent` para a tabela padronizada), helpers de mapper (`promoteOccurredAt`, `promoteCorrelationId`) | nenhuma |
 | `@wave-tech/framework/outbox-relay/dbos` | wiring durável (`registerOutboxRelay`) e runtime (`launchDbos`, `shutdownDbos`, `buildPostgresUrl`) | `@dbos-inc/dbos-sdk` (peer dependency opcional) |
 
-## O que o seu serviço escreve (~2 arquivos)
+## O que o seu serviço escreve
 
-1. **Source** — implementa `OutboxRelaySource` sobre a SUA tabela de outbox:
+Com a tabela **padronizada** (colunas do transporte de audit + `parked_at`/
+`park_reason` — o caso de todo módulo novo), **nada além do wiring**: a lib já
+traz `PrismaOutboxRelaySource` (claim sem lock, `markDelivered` idempotente,
+park de primeira classe) e o mapper `toRelayEvent` (promove `occurredAt`/
+`correlationId` do envelope de audit; payload viaja **verbatim**). O nome do
+serviço entra como parâmetro do source.
+
+Um módulo cuja tabela **diverge** do padrão (filtros próprios, cutoff de
+rollout, park sem colunas — o caso do wave-billing-api) implementa o seu
+`OutboxRelaySource`:
    - `claimPendingBatch` é um **SELECT simples, sem lock e sem transação** — a
-     exclusividade vem da fila DBOS, não do banco. Ordene por `created_at ASC`
-     e filtre pelo cutoff de rollout, se houver.
+     exclusividade vem da fila DBOS, não do banco. Ordene por `created_at ASC`.
    - `markDelivered` é idempotente (UPDATE por ids).
-   - `park` tira o evento da fila e registra o motivo (sem coluna própria:
-     marque entregue + log de erro; com colunas, um `relay_status='parked'`).
-2. **Mapper** — linha do outbox → `RelayEvent`. `source` = nome do seu serviço;
-   use `promoteOccurredAt(payload, row.createdAt)` e
-   `promoteCorrelationId(payload)` para promover campos do envelope de
-   auditoria; payload viaja **verbatim** (o barramento não valida a forma —
-   consumidores validam).
+   - `park` tira o evento da fila e registra o motivo.
 
 ## Composição (composition root)
 
 ```ts
-import { HttpEventSink, OutboxRelayService } from '@wave-tech/framework/outbox-relay';
+import {
+  HttpEventSink,
+  OutboxRelayService,
+  PrismaOutboxRelaySource,
+} from '@wave-tech/framework/outbox-relay';
 import {
   buildPostgresUrl,
   launchDbos,
@@ -39,7 +45,7 @@ import {
 } from '@wave-tech/framework/outbox-relay/dbos';
 
 const service = new OutboxRelayService(
-  new MyOutboxRelaySource(db, config.outboxRelaySince),
+  new PrismaOutboxRelaySource(prisma, 'wave-<seu>-api'),
   new HttpEventSink({ baseUrl: config.eventsApiUrl, apiKey: config.eventsApiKey }),
   { batchSize: 100, maxBatchBytes: 800 * 1024 },   // limites da events-api: 100 itens / ~1MiB
 );

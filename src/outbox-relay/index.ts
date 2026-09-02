@@ -4,3 +4,4 @@ export type * from './outbox-relay-source';
 export * from './outbox-relay-service';
 export * from './http-event-sink';
 export * from './payload-promotion';
+export * from './prisma-outbox-relay-source';
