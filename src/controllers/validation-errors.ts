@@ -19,8 +19,11 @@ export interface ValidationError {
 
 export const formatValidationErrors = (error?: ZodError): ValidationError[] => {
   if (!error) return [];
-  return error.errors.map((issue: ZodIssue) => ({
+  return error.issues.map((issue: ZodIssue) => ({
     message: issue.message,
-    field: issue.path[0],
+    // Zod 4 widens a path segment to `PropertyKey`; object/array schemas never
+    // actually produce a symbol segment, so this narrows back to the field's
+    // real shape.
+    field: issue.path[0] as string | number,
   }));
 };
