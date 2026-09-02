@@ -16,6 +16,7 @@ function makeEvent(id: string, payload: Record<string, unknown> = { some: 'data'
     eventType: 'subscription.created',
     resourceType: 'subscription',
     resourceId: '22222222-2222-4222-8222-222222222222',
+    broker: null,
     payload,
     occurredAt: '2026-08-20T10:00:00.000Z',
   };

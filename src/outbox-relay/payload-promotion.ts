@@ -25,6 +25,17 @@ export function promoteOccurredAt(
 }
 
 /**
+ * The broker the change belongs to: the payload's `brokerId`, or — for the
+ * audit envelope, where the row lives under `snapshot` — the snapshot's
+ * `brokerId`. Null when neither carries a usable string.
+ */
+export function promoteBrokerId(payload: Record<string, unknown>): string | null {
+  const snapshot = payload.snapshot as Record<string, unknown> | null | undefined;
+  const candidate = payload.brokerId ?? snapshot?.brokerId;
+  return typeof candidate === 'string' && candidate.length > 0 ? candidate : null;
+}
+
+/**
  * The payload's `correlationId` when it is a non-empty string within the
  * events API's length limit (256 unless overridden); otherwise undefined.
  */
