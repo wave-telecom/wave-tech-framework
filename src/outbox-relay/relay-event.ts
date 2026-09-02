@@ -14,6 +14,12 @@ export interface RelayEvent {
   resourceType: string;
   /** The aggregate instance the event is about (UUID). */
   resourceId: string;
+  /**
+   * The broker the change belongs to, promoted out of the payload
+   * (`payload.brokerId`, or the audit envelope's `snapshot.brokerId`).
+   * Null when the row carries no broker.
+   */
+  broker: string | null;
   /** Opaque payload owned by the producer. The bus does not validate its shape. */
   payload: Record<string, unknown>;
   /** ISO-8601 timestamp of when the change happened in the producer. */

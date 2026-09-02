@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  promoteBrokerId,
   promoteCorrelationId,
   promoteOccurredAt,
 } from '../../src/outbox-relay/payload-promotion';
@@ -23,6 +24,28 @@ describe('promoteOccurredAt', () => {
       .toBe('2026-08-20T10:00:00.000Z');
     expect(promoteOccurredAt({ occurredAt: 1755592200000 }, CREATED_AT))
       .toBe('2026-08-20T10:00:00.000Z');
+  });
+});
+
+describe('promoteBrokerId', () => {
+  it('promotes brokerId from the payload root', () => {
+    expect(promoteBrokerId({ brokerId: 'broker-1' })).toBe('broker-1');
+  });
+
+  it('falls back to the audit snapshot brokerId', () => {
+    expect(promoteBrokerId({ snapshot: { brokerId: 'broker-2' } })).toBe('broker-2');
+  });
+
+  it('prefers the payload root over the snapshot', () => {
+    expect(promoteBrokerId({ brokerId: 'root', snapshot: { brokerId: 'snap' } })).toBe('root');
+  });
+
+  it('returns null when neither carries a usable string', () => {
+    expect(promoteBrokerId({})).toBeNull();
+    expect(promoteBrokerId({ brokerId: '' })).toBeNull();
+    expect(promoteBrokerId({ brokerId: 42 })).toBeNull();
+    expect(promoteBrokerId({ snapshot: null })).toBeNull();
+    expect(promoteBrokerId({ snapshot: { brokerId: null } })).toBeNull();
   });
 });
 

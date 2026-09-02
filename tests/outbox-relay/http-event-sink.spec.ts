@@ -13,6 +13,7 @@ function makeEvent(id: string): RelayEvent {
     eventType: 'subscription.created',
     resourceType: 'subscription',
     resourceId: '22222222-2222-4222-8222-222222222222',
+    broker: null,
     payload: { some: 'data' },
     occurredAt: '2026-08-20T10:00:00.000Z',
   };
