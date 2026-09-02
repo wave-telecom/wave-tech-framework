@@ -12,11 +12,16 @@ export interface AuditRule {
   /** Which resolved kinds actually emit an audit event. */
   emitOn: Set<OperationKind>;
   /**
-   * When true, compute the field-level diff (payload.changes) for UPDATE
-   * events. Off by default — enabling it also reads the previous row (an extra
-   * findUnique) to build the diff.
+   * When true (the default), compute the field-level diff (payload.changes)
+   * for UPDATE events. Disabling it skips the extra findUnique that reads the
+   * previous row to build the diff.
    */
   diff?: boolean;
+  /**
+   * The entity segment of the eventType. Default: the model name in
+   * snake_case (`PipelineStage` -> `pipeline_stage`).
+   */
+  eventEntity?: string;
   /** Primary-key field read for `resourceId`. Default: 'id'. */
   idField?: string;
 }
@@ -25,15 +30,15 @@ export interface AuditRule {
 export type AuditConfig = Record<string, AuditRule>;
 
 export interface AuditExtensionOptions {
+  /**
+   * The producing module, the first segment of every eventType
+   * (`<module>.<entity>.<action>`, all lowercase — e.g. `billing.broker.updated`).
+   */
+  module: string;
   /** Lowercased Prisma model name for the audit transport table. Default: 'outbox'. */
   transportModel?: string;
-  /** Actor/correlation resolver. Default: reads the framework request hooks. */
+  /** Actor/request-context resolver. Default: reads the framework request hooks. */
   resolveActor?: typeof getAuditActor;
-  /**
-   * Namespace prepended to every eventType, e.g. 'Audit.'.
-   * Default: 'Audit.'. Pass '' to disable.
-   */
-  eventPrefix?: string;
 }
 
 const BULK_OPS = new Set(['createMany', 'updateMany', 'deleteMany']);
@@ -66,10 +71,10 @@ interface ClientWithItx { _createItxClient: (tx: InternalTransaction)=> unknown 
  * passes its own config; everything else (before-capture, atomic write, guards,
  * event contract) is provided here.
  */
-export function createAuditExtension(config: AuditConfig, options: AuditExtensionOptions = {}) {
+export function createAuditExtension(config: AuditConfig, options: AuditExtensionOptions) {
+  const { module } = options;
   const transportModel = options.transportModel ?? 'outbox';
   const resolveActor = options.resolveActor ?? getAuditActor;
-  const eventPrefix = options.eventPrefix ?? 'Audit.';
 
   return Prisma.defineExtension((client) =>
     client.$extends({
@@ -91,7 +96,7 @@ export function createAuditExtension(config: AuditConfig, options: AuditExtensio
             }
 
             const auditedOp = operation as AuditableOperation;
-            const wantsDiff = rule.diff ?? false;
+            const wantsDiff = rule.diff ?? true;
 
             // Captures `before`, runs the business op via `query(args)` (which
             // executes in the CURRENT tx), then writes the outbox row on the
@@ -109,13 +114,14 @@ export function createAuditExtension(config: AuditConfig, options: AuditExtensio
               if (rule.emitOn.has(kind)) {
                 await tx[transportModel].create({
                   data: buildAuditEvent({
+                    module,
                     model,
                     operation: auditedOp,
                     before,
                     after,
                     actor: resolveActor(),
                     computeDiff: wantsDiff,
-                    eventPrefix,
+                    eventEntity: rule.eventEntity,
                     idField: rule.idField,
                   }),
                 });

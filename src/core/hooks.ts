@@ -4,6 +4,7 @@ interface HookContext {
     correlationId: string | undefined;
     tenantId: string | undefined;
     userId: string | undefined;
+    requestChannel: string | undefined;
     logMetadata: Record<string, unknown> | undefined;
 }
 
@@ -53,6 +54,17 @@ export const setHookUserId = (userId: string) => {
 export const getHookUserId = (): string | undefined => {
     const context = getHookContext();
     return context.get('userId') as string | undefined;
+};
+
+/** The channel that originated the request (e.g. "console", "app", "ura"). */
+export const setHookRequestChannel = (requestChannel: string) => {
+    const context = getHookContext();
+    context.set('requestChannel', requestChannel);
+};
+
+export const getHookRequestChannel = (): string | undefined => {
+    const context = getHookContext();
+    return context.get('requestChannel') as string | undefined;
 };
 
 export function setHookLogMetadata(metadata: Record<string, unknown>): void;

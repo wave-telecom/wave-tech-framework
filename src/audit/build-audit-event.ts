@@ -57,35 +57,48 @@ export function diff(
   return toJsonSafe(changes);
 }
 
+/**
+ * PascalCase/camelCase -> snake_case, lowercased: `PipelineStage` ->
+ * `pipeline_stage`. The event-entity segment of the eventType.
+ */
+export function toEventEntity(model: string): string {
+  return model
+    .replace(/([a-z0-9])([A-Z])/g, '$1_$2')
+    .toLowerCase();
+}
+
 interface BuildArgs {
+  /** The producing module, the first eventType segment (e.g. 'billing'). */
+  module: string;
   model: string;
   operation: AuditableOperation;
   before: Record<string, unknown> | null;
   after: Record<string, unknown> | null;
   actor: AuditActor;
-  /** When true, compute the field-level diff for UPDATE events. Default: false. */
+  /** When true, compute the field-level diff for UPDATE events. Default: true. */
   computeDiff?: boolean;
   /**
-   * Prepended to the eventType, e.g. 'Audit.' -> 'Audit.BrokerCreated'.
-   * Default: 'Audit.'. Pass '' to disable.
+   * The entity segment of the eventType. Default: the model name in
+   * snake_case (`PipelineStage` -> `pipeline_stage`).
    */
-  eventPrefix?: string;
+  eventEntity?: string;
   /** Primary-key field read for `resourceId`. Default: 'id'. */
   idField?: string;
 }
 
 export function buildAuditEvent({
+  module,
   model,
   operation,
   before,
   after,
   actor,
-  computeDiff = false,
-  eventPrefix = 'Audit.',
+  computeDiff = true,
+  eventEntity,
   idField = 'id',
 }: BuildArgs): AuditEvent {
   const op = resolveOperationKind(operation, before);
-  const suffix = op === 'CREATE' ? 'Created' : op === 'DELETE' ? 'Deleted' : 'Updated';
+  const action = op === 'CREATE' ? 'created' : op === 'DELETE' ? 'deleted' : 'updated';
   const source = after ?? before ?? {};
 
   const rawId = (source as Record<string, unknown>)[idField];
@@ -100,13 +113,16 @@ export function buildAuditEvent({
     id: randomUUID(),
     resourceType: model,
     resourceId: rawId === undefined || rawId === null ? '' : String(rawId),
-    eventType: `${eventPrefix}${model}${suffix}`,
+    // `<module>.<entity>.<action>`, all lowercase: `billing.broker.updated`.
+    eventType: `${module}.${eventEntity ?? toEventEntity(model)}.${action}`,
     payload: {
       operation: op,
       occurredAt: new Date().toISOString(),
       // Named after the change_history column it lands in downstream.
       changedBy: actor.actorId,
       correlationId: actor.correlationId,
+      /** The channel that originated the change (`x-request-channel`). */
+      requestChannel: actor.requestChannel,
       changes: op === 'CREATE' || !computeDiff ? null : diff(before, after),
       snapshot: op === 'DELETE' ? toJsonSafe(before) : toJsonSafe(after),
     },

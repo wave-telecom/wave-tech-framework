@@ -7,7 +7,7 @@ import {
 import type { AuditActor } from '../../src/audit/audit-actor';
 import { Logger } from '../../src/core/logger';
 
-const actor: AuditActor = { actorId: 'user-1', correlationId: 'corr-1' };
+const actor: AuditActor = { actorId: 'user-1', correlationId: 'corr-1', requestChannel: 'console' };
 
 describe('resolveOperationKind', () => {
   it('maps create -> CREATE and delete -> DELETE', () => {
@@ -55,6 +55,7 @@ describe('diff', () => {
 describe('buildAuditEvent', () => {
   it('builds a CREATE event: Created suffix, snapshot = after, no changes', () => {
     const event = buildAuditEvent({
+      module: 'billing',
       model: 'Broker',
       operation: 'create',
       before: null,
@@ -64,10 +65,11 @@ describe('buildAuditEvent', () => {
 
     expect(event.resourceType).toBe('Broker');
     expect(event.resourceId).toBe('42');
-    expect(event.eventType).toBe('Audit.BrokerCreated');
+    expect(event.eventType).toBe('billing.broker.created');
     expect(event.payload.operation).toBe('CREATE');
     expect(event.payload.changedBy).toBe('user-1');
     expect(event.payload.correlationId).toBe('corr-1');
+    expect(event.payload.requestChannel).toBe('console');
     expect(event.payload.changes).toBeNull();
     expect(event.payload.snapshot).toEqual({ id: 42, name: 'ACME' });
     expect(typeof event.id).toBe('string');
@@ -76,6 +78,7 @@ describe('buildAuditEvent', () => {
 
   it('builds a DELETE event: Deleted suffix, snapshot = before', () => {
     const event = buildAuditEvent({
+      module: 'billing',
       model: 'Broker',
       operation: 'delete',
       before: { id: 7, name: 'old' },
@@ -83,14 +86,15 @@ describe('buildAuditEvent', () => {
       actor,
     });
 
-    expect(event.eventType).toBe('Audit.BrokerDeleted');
+    expect(event.eventType).toBe('billing.broker.deleted');
     expect(event.payload.operation).toBe('DELETE');
     expect(event.payload.snapshot).toEqual({ id: 7, name: 'old' });
     expect(event.payload.changes).toBeNull();
   });
 
-  it('omits changes on UPDATE when computeDiff is false (default)', () => {
+  it('computes changes on UPDATE by default', () => {
     const event = buildAuditEvent({
+      module: 'billing',
       model: 'Broker',
       operation: 'update',
       before: { id: 1, name: 'a' },
@@ -98,52 +102,63 @@ describe('buildAuditEvent', () => {
       actor,
     });
 
-    expect(event.eventType).toBe('Audit.BrokerUpdated');
-    expect(event.payload.changes).toBeNull();
+    expect(event.eventType).toBe('billing.broker.updated');
+    expect(event.payload.changes).toEqual({ name: { from: 'a', to: 'b' } });
     expect(event.payload.snapshot).toEqual({ id: 1, name: 'b' });
   });
 
-  it('computes changes on UPDATE when computeDiff is true', () => {
+  it('omits changes on UPDATE when computeDiff is explicitly false', () => {
     const event = buildAuditEvent({
+      module: 'billing',
       model: 'Broker',
       operation: 'update',
       before: { id: 1, name: 'a' },
       after: { id: 1, name: 'b' },
       actor,
-      computeDiff: true,
+      computeDiff: false,
     });
 
-    expect(event.payload.changes).toEqual({ name: { from: 'a', to: 'b' } });
+    expect(event.payload.changes).toBeNull();
   });
 
   it('resolves upsert suffix from the previous row', () => {
     const created = buildAuditEvent({
+      module: 'billing',
       model: 'Broker', operation: 'upsert', before: null, after: { id: 1 }, actor,
     });
     const updated = buildAuditEvent({
+      module: 'billing',
       model: 'Broker', operation: 'upsert', before: { id: 1 }, after: { id: 1 }, actor,
     });
 
-    expect(created.eventType).toBe('Audit.BrokerCreated');
-    expect(updated.eventType).toBe('Audit.BrokerUpdated');
+    expect(created.eventType).toBe('billing.broker.created');
+    expect(updated.eventType).toBe('billing.broker.updated');
   });
 
-  it('honors a custom eventPrefix and disables it with an empty string', () => {
-    const prefixed = buildAuditEvent({
-      model: 'Broker', operation: 'create', before: null, after: { id: 1 }, actor,
-      eventPrefix: 'History.',
-    });
-    const bare = buildAuditEvent({
-      model: 'Broker', operation: 'create', before: null, after: { id: 1 }, actor,
-      eventPrefix: '',
+  it('snake_cases multi-word models in the entity segment', () => {
+    const event = buildAuditEvent({
+      module: 'sales',
+      model: 'PipelineStage', operation: 'create', before: null, after: { id: 1 }, actor,
     });
 
-    expect(prefixed.eventType).toBe('History.BrokerCreated');
-    expect(bare.eventType).toBe('BrokerCreated');
+    expect(event.eventType).toBe('sales.pipeline_stage.created');
+    // resourceType keeps the Prisma model name untouched.
+    expect(event.resourceType).toBe('PipelineStage');
+  });
+
+  it('honors a custom eventEntity over the derived one', () => {
+    const event = buildAuditEvent({
+      module: 'billing',
+      model: 'Broker', operation: 'create', before: null, after: { id: 1 }, actor,
+      eventEntity: 'partner',
+    });
+
+    expect(event.eventType).toBe('billing.partner.created');
   });
 
   it('reads resourceId from a configurable idField', () => {
     const event = buildAuditEvent({
+      module: 'billing',
       model: 'UserProfile',
       operation: 'update',
       before: { userId: 'u-9' },
@@ -162,6 +177,7 @@ describe('buildAuditEvent', () => {
 
     it('emits an empty resourceId and warns instead of the literal "undefined"', () => {
       const event = buildAuditEvent({
+        module: 'billing',
         model: 'Broker',
         operation: 'create',
         before: null,
