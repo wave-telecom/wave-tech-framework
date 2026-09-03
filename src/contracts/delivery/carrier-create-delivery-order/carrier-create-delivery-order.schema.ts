@@ -1,18 +1,9 @@
 import { z } from 'zod';
-
-/** Recipient details carried on the wire contract between a BSS module and a carrier adapter. */
-export const carrierRecipientSchema = z.object({
-  name: z.string().min(1),
-  document: z.string().min(1),
-  phone: z.string().min(1),
-  addressStreet: z.string().min(1),
-  addressNumber: z.string().min(1),
-  addressComplement: z.string().min(1).nullable(),
-  addressNeighborhood: z.string().min(1),
-  addressCity: z.string().min(1),
-  addressState: z.string().min(1),
-  addressZipCode: z.string().min(1),
-});
+import {
+  carrierDeliveryStatusSchema,
+  carrierRecipientSchema,
+  carrierResourceTypeSchema,
+} from '../carrier-delivery-order-common.schema.js';
 
 /**
  * Request contract for creating a delivery order at the carrier. Carries every
@@ -22,15 +13,15 @@ export const carrierRecipientSchema = z.object({
  * vendor's own wire format.
  */
 export const carrierCreateDeliveryOrderRequestSchema = z.object({
-  id: z.string().min(1),
-  brokerId: z.string().min(1),
+  id: z.uuid(),
+  brokerId: z.uuid(),
   externalCode: z.string().min(1).nullable(),
   metadata: z.record(z.string(), z.unknown()).nullable(),
   purchaseOrderId: z.string().min(1),
   resourceId: z.string().min(1).nullable(),
-  resourceType: z.string().min(1).nullable(),
-  deliveryConfigId: z.string().min(1),
-  deliveryStatus: z.string().min(1),
+  resourceType: carrierResourceTypeSchema.nullable(),
+  deliveryConfigId: z.uuid(),
+  deliveryStatus: carrierDeliveryStatusSchema,
   recipient: carrierRecipientSchema,
 });
 
