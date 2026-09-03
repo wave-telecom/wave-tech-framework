@@ -40,12 +40,25 @@ describe('promoteBrokerId', () => {
     expect(promoteBrokerId({ brokerId: 'root', snapshot: { brokerId: 'snap' } })).toBe('root');
   });
 
-  it('returns null when neither carries a usable string', () => {
+  it('falls back to tenantId — the same boundary under another column name', () => {
+    expect(promoteBrokerId({ tenantId: 'tenant-1' })).toBe('tenant-1');
+    expect(promoteBrokerId({ snapshot: { tenantId: 'tenant-2' } })).toBe('tenant-2');
+  });
+
+  it('prefers brokerId over tenantId when both exist', () => {
+    expect(promoteBrokerId({ brokerId: 'broker-1', tenantId: 'tenant-1' })).toBe('broker-1');
+    expect(
+      promoteBrokerId({ tenantId: 'tenant-1', snapshot: { brokerId: 'broker-2' } }),
+    ).toBe('broker-2');
+  });
+
+  it('returns null when nothing carries a usable string', () => {
     expect(promoteBrokerId({})).toBeNull();
     expect(promoteBrokerId({ brokerId: '' })).toBeNull();
     expect(promoteBrokerId({ brokerId: 42 })).toBeNull();
     expect(promoteBrokerId({ snapshot: null })).toBeNull();
     expect(promoteBrokerId({ snapshot: { brokerId: null } })).toBeNull();
+    expect(promoteBrokerId({ tenantId: 42, snapshot: { tenantId: '' } })).toBeNull();
   });
 });
 

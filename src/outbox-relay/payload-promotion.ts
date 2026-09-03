@@ -27,11 +27,15 @@ export function promoteOccurredAt(
 /**
  * The broker the change belongs to: the payload's `brokerId`, or — for the
  * audit envelope, where the row lives under `snapshot` — the snapshot's
- * `brokerId`. Null when neither carries a usable string.
+ * `brokerId`. Modules that call the same boundary `tenantId` (wave-usage-api)
+ * are covered by the equivalent fallbacks: it is the same platform identity
+ * under another column name, and `brokerId` always wins when both exist.
+ * Null when nothing carries a usable string.
  */
 export function promoteBrokerId(payload: Record<string, unknown>): string | null {
   const snapshot = payload.snapshot as Record<string, unknown> | null | undefined;
-  const candidate = payload.brokerId ?? snapshot?.brokerId;
+  const candidate =
+    payload.brokerId ?? snapshot?.brokerId ?? payload.tenantId ?? snapshot?.tenantId;
   return typeof candidate === 'string' && candidate.length > 0 ? candidate : null;
 }
 
