@@ -1,5 +1,6 @@
 import { Logger } from '../core/logger';
-import type { OutboxRelaySource } from './outbox-relay-source';
+import { EVENTS_API_SINK } from './event-sink';
+import type { OutboxPurgeSource, OutboxRelaySource } from './outbox-relay-source';
 import type { RelayEvent } from './relay-event';
 import { promoteBrokerId, promoteCorrelationId, promoteOccurredAt } from './payload-promotion';
 
@@ -20,6 +21,12 @@ export interface StandardOutboxRow {
   publishedAt: Date | null;
   parkedAt: Date | null;
   parkReason: string | null;
+  /**
+   * Which delivery sink drains this row, decided by the WRITER (the audit
+   * extension stamps {@link EVENTS_API_SINK}). NULL = no route: nothing
+   * claims it — fail-closed for legacy/unrouted rows.
+   */
+  sink: string | null;
   createdAt: Date;
 }
 
@@ -31,8 +38,10 @@ export interface StandardOutboxRow {
 export interface StandardOutboxClient {
   outbox: {
     findMany: (args: {
-      where: { published: boolean; parkedAt: null };
-      orderBy: { createdAt: 'asc' | 'desc' };
+      where:
+        | { sink: string; published: boolean; parkedAt: null }
+        | { published: boolean; publishedAt: { lt: Date } };
+      orderBy: { createdAt: 'asc' | 'desc' } | { publishedAt: 'asc' | 'desc' };
       take: number;
     }) => Promise<StandardOutboxRow[]>;
     updateMany: (args: {
@@ -43,6 +52,9 @@ export interface StandardOutboxClient {
       where: { id: string };
       data: { parkedAt: Date; parkReason: string };
     }) => Promise<unknown>;
+    deleteMany: (args: {
+      where: { id: { in: string[] } };
+    }) => Promise<{ count: number }>;
   };
 }
 
@@ -69,6 +81,7 @@ export function toRelayEvent(row: StandardOutboxRow, source: string): RelayEvent
     occurredAt: promoteOccurredAt(payload, row.createdAt),
     correlationId: promoteCorrelationId(payload),
     idempotencyKey: row.idempotencyKey ?? undefined,
+    sink: row.sink,
   };
 }
 
@@ -82,25 +95,53 @@ export function toRelayEvent(row: StandardOutboxRow, source: string): RelayEvent
  * the pending set via `parked_at`. Manual reprocess after fixing the cause:
  * clear `parked_at`/`park_reason`.
  *
- * A module whose table diverges from the standardized columns (extra filters,
- * rollout cutoffs, no park columns — e.g. wave-billing-api) implements its own
- * {@link OutboxRelaySource} instead.
+ * Claims are scoped to ONE sink: routing is decided by whoever wrote the row
+ * (the `sink` column), never inferred from event naming — domain events on
+ * another bus and unrouted legacy rows (`sink = NULL`) are invisible by
+ * construction. One relay instance per sink; see the multi-sink section of
+ * docs/outbox-relay.md.
+ *
+ * A module whose table diverges from the standardized columns implements its
+ * own {@link OutboxRelaySource} instead.
  */
-export class PrismaOutboxRelaySource implements OutboxRelaySource {
+export class PrismaOutboxRelaySource implements OutboxRelaySource, OutboxPurgeSource {
   constructor(
     private readonly database: StandardOutboxClient,
     /** The producing service, e.g. "wave-sales-api" — the RelayEvent source. */
     private readonly source: string,
+    /** The delivery sink this relay drains. Default: the platform events bus. */
+    private readonly sink: string = EVENTS_API_SINK,
   ) {}
 
   async claimPendingBatch(limit: number): Promise<RelayEvent[]> {
     const rows = await this.database.outbox.findMany({
-      where: { published: false, parkedAt: null },
+      where: { sink: this.sink, published: false, parkedAt: null },
       orderBy: { createdAt: 'asc' },
       take: limit,
     });
 
     return rows.map((row) => toRelayEvent(row, this.source));
+  }
+
+  /**
+   * Retention: deletes at most `batchSize` DELIVERED rows older than the
+   * cutoff, oldest first. Sink-agnostic on purpose — a delivered row is
+   * transport history whatever bus carried it. Two phases because Prisma's
+   * deleteMany has no LIMIT; idempotent, so a retried step deletes what
+   * remains. Pending and parked rows (`published = false`) never match.
+   */
+  async purgeDeliveredBatch(olderThan: Date, batchSize: number): Promise<number> {
+    const rows = await this.database.outbox.findMany({
+      where: { published: true, publishedAt: { lt: olderThan } },
+      orderBy: { publishedAt: 'asc' },
+      take: batchSize,
+    });
+    if (rows.length === 0) return 0;
+
+    const { count } = await this.database.outbox.deleteMany({
+      where: { id: { in: rows.map((row) => row.id) } },
+    });
+    return count;
   }
 
   async markDelivered(ids: string[]): Promise<void> {

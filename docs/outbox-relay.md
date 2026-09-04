@@ -15,7 +15,7 @@ Dois entrypoints:
 ## O que o seu serviço escreve
 
 Com a tabela **padronizada** (colunas do transporte de audit + `parked_at`/
-`park_reason` — o caso de todo módulo novo), **nada além do wiring**: a lib já
+`park_reason` + `sink` — o caso de todo módulo novo), **nada além do wiring**: a lib já
 traz `PrismaOutboxRelaySource` (claim sem lock, `markDelivered` idempotente,
 park de primeira classe) e o mapper `toRelayEvent` (promove `occurredAt`/
 `correlationId` do envelope de audit; payload viaja **verbatim**). O nome do
@@ -123,6 +123,56 @@ num serviço com CPU throttled.**
   Consumidores ordenam por `occurredAt`.
 - **Exclusão mútua**: se outro canal escreve o mesmo marcador de entrega,
   imponha no boot que só um canal esteja ativo.
+
+## Roteamento por sink (0.9)
+
+A coluna `sink` da tabela outbox decide **quem entrega a linha** — e é escrita
+por quem EMITE o evento, nunca inferida do nome:
+
+- O audit extension grava `sink = 'events-api'` (`EVENTS_API_SINK`) em tudo
+  que emite: auditoria sempre viaja o barramento de eventos da plataforma.
+- Evento de domínio pertence a outro canal: quem o escreve grava o sink dele
+  (ex.: `'pubsub'` no worker legado do billing). **Domínio nunca vai pra
+  events-api.**
+- `sink = NULL` é linha sem rota: ninguém claima (fail-closed) — o estado
+  natural de backlog legado após o backfill.
+
+Um destino novo custa três coisas: um `EventSink` do transporte, um segundo
+`registerOutboxRelay({ name: '<sink>' , ... })` (fila/schedule/dedup próprios —
+sinks drenam em paralelo e falham isolados) e o valor novo na coluna. Fila
+única com um sink roteador é possível por composição, mas perde o isolamento
+de falha entre destinos — prefira N filas.
+
+## Retenção (purge, 0.9)
+
+Linha entregue é histórico de transporte — o arquivo de longo prazo é o
+change-history. O relay ganha um job diário de expurgo, opcional:
+
+```ts
+registerOutboxRelay({
+  service, maxBatchesPerRun, schedule,
+  purge: {
+    enabled: env.OUTBOX_RELAY_SCHEDULE_ENABLED,   // mesma alavanca do cron interno
+    cron: '0 4 * * *',
+    source,                                        // o mesmo PrismaOutboxRelaySource
+    olderThan: () => new Date(Date.now() - 30 * 24 * 3600 * 1000),
+    batchSize: 1000,
+    maxBatchesPerRun: 50,
+  },
+});
+```
+
+- **Apaga**: `published = true AND published_at < olderThan()` — em lotes
+  curtos e idempotentes, de qualquer sink (entregue é entregue).
+- **Nunca apaga**: `published = false` — pendentes E parkeadas. Parked é a
+  fila de erro; espera um operador.
+- Roda na MESMA fila do drain (`globalConcurrency: 1`): nunca concorre com o
+  claim do próprio sink. `startPurgeNow()` no handle é o gatilho manual/externo.
+- Redrive manual de linha já entregue só funciona dentro da janela de retenção.
+- `idempotency_key` é liberada quando a linha some: chaves DEVEM carregar o
+  período/ciclo (ex.: `subscription.billing_due-<id>-<data>`) — já é o padrão.
+- Índices de suporte por módulo: `(sink, published, created_at)` para o claim e
+  parcial `(published_at) WHERE published` para o purge.
 
 ## Pré-requisitos de infra
 

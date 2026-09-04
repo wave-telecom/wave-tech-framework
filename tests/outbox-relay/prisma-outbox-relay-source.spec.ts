@@ -17,6 +17,7 @@ const row = (overrides: Partial<StandardOutboxRow> = {}): StandardOutboxRow => (
   publishedAt: null,
   parkedAt: null,
   parkReason: null,
+  sink: 'events-api',
   createdAt: new Date('2026-09-01T10:15:01.000Z'),
   ...overrides,
 });
@@ -25,8 +26,9 @@ const makeFakeClient = (rows: StandardOutboxRow[] = []) => {
   const findMany = vi.fn().mockResolvedValue(rows);
   const updateMany = vi.fn().mockResolvedValue({ count: rows.length });
   const update = vi.fn().mockResolvedValue(row());
-  const client = { outbox: { findMany, updateMany, update } } as StandardOutboxClient;
-  return { client, findMany, updateMany, update };
+  const deleteMany = vi.fn().mockResolvedValue({ count: rows.length });
+  const client = { outbox: { findMany, updateMany, update, deleteMany } } as StandardOutboxClient;
+  return { client, findMany, updateMany, update, deleteMany };
 };
 
 describe('toRelayEvent', () => {
@@ -89,14 +91,14 @@ describe('toRelayEvent', () => {
 });
 
 describe('PrismaOutboxRelaySource', () => {
-  it('claims only pending, unparked rows, oldest first, bounded by the limit', async () => {
+  it('claims only pending, unparked rows of its sink, oldest first, bounded by the limit', async () => {
     const { client, findMany } = makeFakeClient([row()]);
     const source = new PrismaOutboxRelaySource(client, 'wave-billing-api');
 
     const events = await source.claimPendingBatch(50);
 
     expect(findMany).toHaveBeenCalledWith({
-      where: { published: false, parkedAt: null },
+      where: { sink: 'events-api', published: false, parkedAt: null },
       orderBy: { createdAt: 'asc' },
       take: 50,
     });
@@ -135,5 +137,58 @@ describe('PrismaOutboxRelaySource', () => {
       where: { id: 'dead-event' },
       data: { parkedAt: expect.any(Date), parkReason: 'payload rejected by the events API' },
     });
+  });
+
+  it('claims the sink it was constructed for — routing is the row writer decision', async () => {
+    const { client, findMany } = makeFakeClient([]);
+    const source = new PrismaOutboxRelaySource(client, 'wave-billing-api', 'kafka');
+
+    await source.claimPendingBatch(10);
+
+    expect(findMany).toHaveBeenCalledWith({
+      where: { sink: 'kafka', published: false, parkedAt: null },
+      orderBy: { createdAt: 'asc' },
+      take: 10,
+    });
+  });
+
+  it('carries the row sink on the relay event', () => {
+    expect(toRelayEvent(row({ sink: 'kafka' }), 'x').sink).toBe('kafka');
+    expect(toRelayEvent(row({ sink: null }), 'x').sink).toBeNull();
+  });
+});
+
+describe('PrismaOutboxRelaySource.purgeDeliveredBatch', () => {
+  const CUTOFF = new Date('2026-08-05T00:00:00.000Z');
+
+  it('selects delivered rows older than the cutoff and deletes them by id', async () => {
+    const delivered = [
+      row({ id: 'old-1', published: true, publishedAt: new Date('2026-08-01T00:00:00.000Z') }),
+      row({ id: 'old-2', published: true, publishedAt: new Date('2026-08-02T00:00:00.000Z') }),
+    ];
+    const { client, findMany, deleteMany } = makeFakeClient(delivered);
+    const source = new PrismaOutboxRelaySource(client, 'x');
+
+    const deleted = await source.purgeDeliveredBatch(CUTOFF, 100);
+
+    // Sink-agnostic on purpose: delivered is transport history whatever bus
+    // carried it. Pending/parked never match (published = false).
+    expect(findMany).toHaveBeenCalledWith({
+      where: { published: true, publishedAt: { lt: CUTOFF } },
+      orderBy: { publishedAt: 'asc' },
+      take: 100,
+    });
+    expect(deleteMany).toHaveBeenCalledWith({ where: { id: { in: ['old-1', 'old-2'] } } });
+    expect(deleted).toBe(2);
+  });
+
+  it('short-circuits without a delete when nothing is eligible', async () => {
+    const { client, deleteMany } = makeFakeClient([]);
+    const source = new PrismaOutboxRelaySource(client, 'x');
+
+    const deleted = await source.purgeDeliveredBatch(CUTOFF, 100);
+
+    expect(deleted).toBe(0);
+    expect(deleteMany).not.toHaveBeenCalled();
   });
 });

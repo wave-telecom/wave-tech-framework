@@ -17,6 +17,7 @@ function makeEvent(id: string, payload: Record<string, unknown> = { some: 'data'
     resourceType: 'subscription',
     resourceId: '22222222-2222-4222-8222-222222222222',
     broker: null,
+    sink: 'events-api',
     payload,
     occurredAt: '2026-08-20T10:00:00.000Z',
   };
@@ -56,9 +57,9 @@ describe('OutboxRelayService', () => {
       const big = 'x'.repeat(400);
       const events = ['a', 'b', 'c'].map((id) => makeEvent(id, { big }));
 
-      // Each event serializes to ~600 bytes; two exceed 1200 only with the
+      // Each event serializes to ~630 bytes; two exceed 1260 only with the
       // third, so the split lands after the second.
-      const plan = makeService(10, 1300).planDelivery(events);
+      const plan = makeService(10, 1360).planDelivery(events);
 
       expect(plan.chunks.map((chunk) => chunk.map((event) => event.id)))
         .toEqual([['a', 'b'], ['c']]);
