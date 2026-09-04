@@ -22,3 +22,22 @@ export interface OutboxRelaySource {
    */
   park: (id: string, reason: string) => Promise<void>;
 }
+
+/**
+ * Optional retention capability of an outbox store. Deliberately a separate
+ * interface: draining and purging are different jobs on different cadences,
+ * and a source may support one without the other.
+ *
+ * The criterion is delivery, not routing: a delivered row is transport
+ * history whatever sink carried it, while pending and parked rows
+ * (`published = false`) are NEVER purged — parked is the error queue, and it
+ * waits for an operator.
+ */
+export interface OutboxPurgeSource {
+  /**
+   * Deletes at most `batchSize` delivered rows whose `published_at` is older
+   * than the cutoff; returns how many were deleted. Idempotent: re-running
+   * deletes whatever remains.
+   */
+  purgeDeliveredBatch: (olderThan: Date, batchSize: number) => Promise<number>;
+}

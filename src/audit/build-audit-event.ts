@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import type { AuditActor } from './audit-actor';
 import { Logger } from '../core/logger';
+import { EVENTS_API_SINK } from '../outbox-relay/event-sink';
 
 export type AuditableOperation = 'create' | 'update' | 'delete' | 'upsert';
 export type OperationKind = 'CREATE' | 'UPDATE' | 'DELETE';
@@ -13,6 +14,8 @@ export type JsonValue =
 /**
  * Shape written to the audit transport (`outbox`) table. Matches the
  * standardized columns; published/publishedAt/createdAt use their DB defaults.
+ * `sink` routes the row to the platform events bus — the writer decides the
+ * route, the relay only obeys it.
  */
 export interface AuditEvent {
   id: string;
@@ -20,6 +23,7 @@ export interface AuditEvent {
   resourceType: string;
   eventType: string;
   payload: Record<string, JsonValue | null>;
+  sink: string;
 }
 
 /**
@@ -113,6 +117,9 @@ export function buildAuditEvent({
     id: randomUUID(),
     resourceType: model,
     resourceId: rawId === undefined || rawId === null ? '' : String(rawId),
+    // Audit ALWAYS travels the platform events bus — routing is decided here,
+    // at emission, never inferred from the event name by the transport.
+    sink: EVENTS_API_SINK,
     // `<module>.<entity>.<action>`, all lowercase: `billing.broker.updated`.
     eventType: `${module}.${eventEntity ?? toEventEntity(model)}.${action}`,
     payload: {

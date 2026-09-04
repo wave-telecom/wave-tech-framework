@@ -1,6 +1,15 @@
 import type { RelayEvent } from './relay-event';
 
 /**
+ * The sink name of the platform events bus (wave-events-api). Written by the
+ * audit extension on every outbox row it emits, and the default a
+ * PrismaOutboxRelaySource claims — routing is decided by the WRITER of the
+ * row, never inferred from event naming. Rows with `sink = NULL` have no
+ * route and are claimed by nobody (fail-closed).
+ */
+export const EVENTS_API_SINK = 'events-api';
+
+/**
  * The delivery outcome for one event, keyed by the ORIGIN id — the outbox row
  * id from the {@link RelayEvent}, not whatever id the destination assigned.
  * `duplicate` means the destination had already stored the event; the relay

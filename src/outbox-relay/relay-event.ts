@@ -27,4 +27,10 @@ export interface RelayEvent {
   correlationId?: string;
   /** Explicit dedupe key. The bus defaults it to "<source>:<id>" when absent. */
   idempotencyKey?: string;
+  /**
+   * The delivery sink the row was routed to (the outbox `sink` column) —
+   * relay-internal routing metadata: a multi-sink composition can dispatch on
+   * it, and the events API simply strips it on ingest.
+   */
+  sink: string | null;
 }
