@@ -13,7 +13,14 @@ export interface ScheduledJobOptions {
     enabled: boolean;
     /** 5- or 6-field crontab; 6 fields give second granularity. */
     cron: string;
-    /** Timezone the crontab is read in. Defaults to UTC. */
+    /**
+     * Timezone the crontab is matched in. Unset, DBOS compares the crontab
+     * against the process's LOCAL time (`Date#getHours` and friends), so the
+     * same schedule fires at different instants on a developer's machine and in
+     * a UTC container. Irrelevant for a schedule coarser than the difference —
+     * hourly fires at the same instants either way — and worth setting
+     * explicitly for anything daily or rarer.
+     */
     timezone?: string;
   };
   /**
