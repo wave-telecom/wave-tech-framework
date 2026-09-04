@@ -191,3 +191,22 @@ describe('buildAuditEvent', () => {
     });
   });
 });
+
+describe('sink routing', () => {
+  const args = () => ({
+    module: 'billing',
+    model: 'Broker',
+    operation: 'create' as const,
+    before: null,
+    after: { id: 'b-1', name: 'Acme' },
+    actor: { actorId: null, correlationId: null, requestChannel: null },
+  });
+
+  it('stamps the platform events bus by default', () => {
+    expect(buildAuditEvent(args()).sink).toBe('events-api');
+  });
+
+  it('stamps the sink the module configured — routing is an emission decision', () => {
+    expect(buildAuditEvent({ ...args(), sink: 'kafka' }).sink).toBe('kafka');
+  });
+});
