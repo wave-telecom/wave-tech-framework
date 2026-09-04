@@ -1,5 +1,5 @@
 import { DBOS } from '@dbos-inc/dbos-sdk';
-import { Logger } from '../../core/logger';
+import { Logger } from '../core/logger';
 
 export interface DbosRuntimeConfig {
   /** Application name — namespaces workflows in the system database. */

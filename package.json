@@ -109,6 +109,11 @@
       "require": "./dist/audit/index.js",
       "default": "./dist/audit/index.js"
     },
+    "./dbos": {
+      "types": "./dist/dbos/index.d.ts",
+      "require": "./dist/dbos/index.js",
+      "default": "./dist/dbos/index.js"
+    },
     "./outbox-relay": {
       "types": "./dist/outbox-relay/index.d.ts",
       "require": "./dist/outbox-relay/index.js",
