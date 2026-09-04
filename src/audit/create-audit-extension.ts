@@ -37,6 +37,13 @@ export interface AuditExtensionOptions {
   module: string;
   /** Lowercased Prisma model name for the audit transport table. Default: 'outbox'. */
   transportModel?: string;
+  /**
+   * The delivery sink stamped on every emitted row — which relay drains this
+   * module's audit events. Default: the platform events bus
+   * ({@link EVENTS_API_SINK}). Override only when a module's audit deliberately
+   * travels another bus; the relay claiming that sink must exist.
+   */
+  sink?: string;
   /** Actor/request-context resolver. Default: reads the framework request hooks. */
   resolveActor?: typeof getAuditActor;
 }
@@ -72,7 +79,7 @@ interface ClientWithItx { _createItxClient: (tx: InternalTransaction)=> unknown 
  * event contract) is provided here.
  */
 export function createAuditExtension(config: AuditConfig, options: AuditExtensionOptions) {
-  const { module } = options;
+  const { module, sink } = options;
   const transportModel = options.transportModel ?? 'outbox';
   const resolveActor = options.resolveActor ?? getAuditActor;
 
@@ -123,6 +130,7 @@ export function createAuditExtension(config: AuditConfig, options: AuditExtensio
                     computeDiff: wantsDiff,
                     eventEntity: rule.eventEntity,
                     idField: rule.idField,
+                    sink,
                   }),
                 });
               }

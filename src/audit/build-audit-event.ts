@@ -88,6 +88,8 @@ interface BuildArgs {
   eventEntity?: string;
   /** Primary-key field read for `resourceId`. Default: 'id'. */
   idField?: string;
+  /** Delivery sink stamped on the row. Default: the platform events bus. */
+  sink?: string;
 }
 
 export function buildAuditEvent({
@@ -100,6 +102,7 @@ export function buildAuditEvent({
   computeDiff = true,
   eventEntity,
   idField = 'id',
+  sink = EVENTS_API_SINK,
 }: BuildArgs): AuditEvent {
   const op = resolveOperationKind(operation, before);
   const action = op === 'CREATE' ? 'created' : op === 'DELETE' ? 'deleted' : 'updated';
@@ -117,9 +120,10 @@ export function buildAuditEvent({
     id: randomUUID(),
     resourceType: model,
     resourceId: rawId === undefined || rawId === null ? '' : String(rawId),
-    // Audit ALWAYS travels the platform events bus — routing is decided here,
-    // at emission, never inferred from the event name by the transport.
-    sink: EVENTS_API_SINK,
+    // Audit travels the platform events bus unless the module deliberately
+    // routes it elsewhere — routing is decided here, at emission, never
+    // inferred from the event name by the transport.
+    sink,
     // `<module>.<entity>.<action>`, all lowercase: `billing.broker.updated`.
     eventType: `${module}.${eventEntity ?? toEventEntity(model)}.${action}`,
     payload: {
