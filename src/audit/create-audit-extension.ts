@@ -24,6 +24,15 @@ export interface AuditRule {
   eventEntity?: string;
   /** Primary-key field read for `resourceId`. Default: 'id'. */
   idField?: string;
+  /**
+   * Field of the audited row whose value becomes the event's broker
+   * (written as `payload.brokerId`, which the relay's standard promotion
+   * reads before falling back to `snapshot.brokerId`). Set it when the
+   * row's broker is not literally named `brokerId` — the canonical case is
+   * a self-scoped aggregate root like a Broker itself, which uses `'id'`.
+   * Default: unset — the promotion relies on `snapshot.brokerId` alone.
+   */
+  brokerIdField?: string;
 }
 
 /** model name -> rule. NEVER include the audit transport model itself (recursion). */
@@ -130,6 +139,7 @@ export function createAuditExtension(config: AuditConfig, options: AuditExtensio
                     computeDiff: wantsDiff,
                     eventEntity: rule.eventEntity,
                     idField: rule.idField,
+                    brokerIdField: rule.brokerIdField,
                     sink,
                   }),
                 });
