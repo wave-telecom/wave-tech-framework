@@ -210,3 +210,63 @@ describe('sink routing', () => {
     expect(buildAuditEvent({ ...args(), sink: 'kafka' }).sink).toBe('kafka');
   });
 });
+
+describe('brokerIdField', () => {
+  const actor = { actorId: null, correlationId: null, requestChannel: null };
+  const args = () => ({
+    module: 'billing',
+    model: 'Broker',
+    operation: 'create' as const,
+    before: null,
+    after: { id: 'b-1', name: 'Acme' },
+    actor,
+  });
+
+  it('lifts the configured field into payload.brokerId — the self-scoped Broker case', () => {
+    const event = buildAuditEvent({ ...args(), brokerIdField: 'id' });
+
+    expect(event.payload.brokerId).toBe('b-1');
+  });
+
+  it('is what the relay promotion reads FIRST, beating snapshot.brokerId', () => {
+    const event = buildAuditEvent({
+      ...args(),
+      after: { id: 'b-1', brokerId: 'other-broker' },
+      brokerIdField: 'id',
+    });
+
+    // payload.brokerId wins over snapshot.brokerId in promoteBrokerId.
+    expect(event.payload.brokerId).toBe('b-1');
+  });
+
+  it('omits payload.brokerId entirely when unset — snapshot promotion stays in charge', () => {
+    const event = buildAuditEvent(args());
+
+    expect('brokerId' in event.payload).toBe(false);
+  });
+
+  it('warns and omits when the configured field is missing on the row', () => {
+    vi.spyOn(Logger, 'warn').mockImplementation(() => undefined);
+
+    const event = buildAuditEvent({
+      ...args(),
+      after: { name: 'no-id-here' },
+      brokerIdField: 'id',
+    });
+
+    expect('brokerId' in event.payload).toBe(false);
+    expect(Logger.warn).toHaveBeenCalled();
+  });
+
+  it('DELETE events read the broker from the before row', () => {
+    const event = buildAuditEvent({
+      ...args(),
+      operation: 'delete' as const,
+      before: { id: 'b-2', name: 'Gone' },
+      after: null,
+      brokerIdField: 'id',
+    });
+
+    expect(event.payload.brokerId).toBe('b-2');
+  });
+});

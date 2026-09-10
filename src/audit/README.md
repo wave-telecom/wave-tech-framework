@@ -117,6 +117,27 @@ createAuditExtension({
 });
 ```
 
+## Broker do evento (`brokerIdField`)
+
+O relay preenche o `broker` do evento lendo `payload.brokerId` e, na falta dele,
+`snapshot.brokerId` — ou seja, um model cuja linha carrega a coluna `brokerId`
+não precisa de nada. Quando o broker da linha vive sob OUTRO nome, informe
+`brokerIdField` na regra e o builder o eleva para `payload.brokerId`. O caso
+canônico é o agregado auto-escopado — o próprio Broker, cujo escopo é o seu `id`:
+
+```typescript
+createAuditExtension({
+  Broker: {
+    operations: new Set(['upsert']),
+    emitOn: new Set(['CREATE', 'UPDATE']),
+    diff: true,
+    brokerIdField: 'id',
+  },
+});
+```
+
+Sem isso, o evento sai com `broker: null` e a events API o rejeita (400/park).
+
 Se o campo configurado não existir no registro, o `resourceId` sai vazio (`''`) e
 um `warn` é logado, em vez de gravar a string literal `"undefined"`.
 

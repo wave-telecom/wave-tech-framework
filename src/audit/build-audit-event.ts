@@ -88,6 +88,12 @@ interface BuildArgs {
   eventEntity?: string;
   /** Primary-key field read for `resourceId`. Default: 'id'. */
   idField?: string;
+  /**
+   * Field of the row whose value becomes the event's broker
+   * (`payload.brokerId`). For aggregates whose broker is not literally named
+   * `brokerId` — a self-scoped root like Broker uses `'id'`. Default: unset.
+   */
+  brokerIdField?: string;
   /** Delivery sink stamped on the row. Default: the platform events bus. */
   sink?: string;
 }
@@ -102,6 +108,7 @@ export function buildAuditEvent({
   computeDiff = true,
   eventEntity,
   idField = 'id',
+  brokerIdField,
   sink = EVENTS_API_SINK,
 }: BuildArgs): AuditEvent {
   const op = resolveOperationKind(operation, before);
@@ -116,6 +123,22 @@ export function buildAuditEvent({
     );
   }
 
+  // Lifted into payload.brokerId, which the relay's standard promotion reads
+  // BEFORE snapshot.brokerId — so a row whose broker lives under another name
+  // (a self-scoped Broker's own `id`) still stamps the event's broker.
+  let brokerId: string | undefined;
+  if (brokerIdField !== undefined) {
+    const rawBroker = (source as Record<string, unknown>)[brokerIdField];
+    if (rawBroker === undefined || rawBroker === null || rawBroker === '') {
+      Logger.warn(
+        `Audit event for "${model}" has no "${brokerIdField}" value; the event will carry `
+        + 'no broker and the events API will reject it. Check "brokerIdField" on the audit rule.',
+      );
+    } else {
+      brokerId = String(rawBroker);
+    }
+  }
+
   return {
     id: randomUUID(),
     resourceType: model,
@@ -128,6 +151,7 @@ export function buildAuditEvent({
     eventType: `${module}.${eventEntity ?? toEventEntity(model)}.${action}`,
     payload: {
       operation: op,
+      ...(brokerId !== undefined && { brokerId }),
       occurredAt: new Date().toISOString(),
       // Named after the change_history column it lands in downstream.
       changedBy: actor.actorId,
