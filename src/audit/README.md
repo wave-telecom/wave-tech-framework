@@ -138,6 +138,26 @@ createAuditExtension({
 
 Sem isso, o evento sai com `broker: null` e a events API o rejeita (400/park).
 
+## Desligando o audit por ambiente (`enabled`)
+
+`enabled: false` (lido uma vez, na criação do client) transforma a extension num
+pass-through nomeado: nenhuma interceptação, nenhuma linha no outbox, custo zero
+por query — o wiring do módulo não muda. Use para ambientes onde o audit do
+módulo é deliberadamente desligado (ex.: um tenant cujo relay nunca roda, onde
+as linhas só acumulariam):
+
+```typescript
+export const auditExtension = createAuditExtension(config, {
+  module: 'usage',
+  enabled: env.AUDIT_ENABLED, // default true; desligar exige ato explícito
+});
+```
+
+Trade-offs conscientes (o boot grita um warn quando desligado): os writes não
+deixam NENHUM rastro e audit não tem backfill; e o guard de operações em lote
+sai junto — um `updateMany` num modelo auditado roda no ambiente desligado e
+quebra nos ligados.
+
 Se o campo configurado não existir no registro, o `resourceId` sai vazio (`''`) e
 um `warn` é logado, em vez de gravar a string literal `"undefined"`.
 

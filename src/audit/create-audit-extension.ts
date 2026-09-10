@@ -55,6 +55,17 @@ export interface AuditExtensionOptions {
   sink?: string;
   /** Actor/request-context resolver. Default: reads the framework request hooks. */
   resolveActor?: typeof getAuditActor;
+  /**
+   * Master switch, read once at client creation. With `false` the extension
+   * becomes a named pass-through: nothing is intercepted and no outbox row is
+   * written — for environments where the module's audit is deliberately off
+   * (e.g. a tenant whose relay never runs, where rows would only accumulate).
+   * Mind the trade-offs: writes leave NO trace (and audit has no backfill),
+   * and the bulk-operation guard on audited models is off with it — an
+   * updateMany that this extension would reject runs fine on the disabled
+   * environment. Default: true.
+   */
+  enabled?: boolean;
 }
 
 const BULK_OPS = new Set(['createMany', 'updateMany', 'deleteMany']);
@@ -91,6 +102,20 @@ export function createAuditExtension(config: AuditConfig, options: AuditExtensio
   const { module, sink } = options;
   const transportModel = options.transportModel ?? 'outbox';
   const resolveActor = options.resolveActor ?? getAuditActor;
+
+  // Disabled = a named no-op with the same type: the caller's
+  // `$extends(auditExtension)` wiring stays identical, but no hook is
+  // registered — zero per-query cost, zero outbox rows. Shouted at boot so a
+  // misconfigured environment is visible in any investigation.
+  if (options.enabled === false) {
+    Logger.warn(
+      `Audit extension DISABLED for module "${module}": writes to audited models `
+      + 'will leave no audit trail and bulk-operation guards are off.',
+    );
+    return Prisma.defineExtension((client) =>
+      client.$extends({ name: 'audit-extension (disabled)' }),
+    );
+  }
 
   return Prisma.defineExtension((client) =>
     client.$extends({
