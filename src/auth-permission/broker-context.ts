@@ -1,5 +1,5 @@
 import type { FastifyRequest } from 'fastify';
-import { BrokerContextNotResolvedError } from './broker-context-not-resolved-error';
+import { BrokerContextNotResolvedError } from './errors/broker-context-not-resolved-error';
 
 /** The broker scope `registerPermissionAuth` resolved for the in-flight request. Never empty. */
 export interface BrokerContext {
