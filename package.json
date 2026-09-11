@@ -134,10 +134,10 @@
       "require": "./dist/contracts/index.js",
       "default": "./dist/contracts/index.js"
     },
-    "./permission-auth": {
-      "types": "./dist/permission-auth/index.d.ts",
-      "require": "./dist/permission-auth/index.js",
-      "default": "./dist/permission-auth/index.js"
+    "./auth-permission": {
+      "types": "./dist/auth-permission/index.d.ts",
+      "require": "./dist/auth-permission/index.js",
+      "default": "./dist/auth-permission/index.js"
     }
   },
   "typesVersions": {
@@ -172,8 +172,8 @@
       "contracts": [
         "./dist/contracts/index.d.ts"
       ],
-      "permission-auth": [
-        "./dist/permission-auth/index.d.ts"
+      "auth-permission": [
+        "./dist/auth-permission/index.d.ts"
       ]
     }
   }

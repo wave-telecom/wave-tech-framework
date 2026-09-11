@@ -18,9 +18,11 @@ export {
   PUBLIC_PATHS,
 } from './register-permission-auth';
 
-export { PermissionValidatorUnauthorizedError } from './permission-validator-unauthorized-error';
-export { PermissionValidatorUnavailableError } from './permission-validator-unavailable-error';
-export { PermissionDeniedError } from './permission-denied-error';
-export { MalformedBrokerHeaderError } from './malformed-broker-header-error';
-export { AmbiguousBrokerTargetError } from './ambiguous-broker-target-error';
-export { BrokerContextNotResolvedError } from './broker-context-not-resolved-error';
+export {
+  PermissionValidatorUnauthorizedError,
+  PermissionValidatorUnavailableError,
+  PermissionDeniedError,
+  MalformedBrokerHeaderError,
+  AmbiguousBrokerTargetError,
+  BrokerContextNotResolvedError,
+} from './errors';

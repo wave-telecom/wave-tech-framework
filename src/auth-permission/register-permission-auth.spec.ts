@@ -3,12 +3,12 @@ import Fastify, { type FastifyInstance, type FastifyReply } from 'fastify';
 import { describe, it, expect, afterEach } from 'vitest';
 import { registerPermissionAuth, API_KEY_HEADER, BROKER_ID_HEADER } from './register-permission-auth';
 import { requireBrokerContext } from './broker-context';
-import { PermissionValidatorUnauthorizedError } from './permission-validator-unauthorized-error';
-import { PermissionValidatorUnavailableError } from './permission-validator-unavailable-error';
-import { PermissionDeniedError } from './permission-denied-error';
-import { MalformedBrokerHeaderError } from './malformed-broker-header-error';
-import { AmbiguousBrokerTargetError } from './ambiguous-broker-target-error';
-import { BrokerContextNotResolvedError } from './broker-context-not-resolved-error';
+import { PermissionValidatorUnauthorizedError } from './errors/permission-validator-unauthorized-error';
+import { PermissionValidatorUnavailableError } from './errors/permission-validator-unavailable-error';
+import { PermissionDeniedError } from './errors/permission-denied-error';
+import { MalformedBrokerHeaderError } from './errors/malformed-broker-header-error';
+import { AmbiguousBrokerTargetError } from './errors/ambiguous-broker-target-error';
+import { BrokerContextNotResolvedError } from './errors/broker-context-not-resolved-error';
 import type {
   PermissionValidationRequest,
   PermissionValidationResult,

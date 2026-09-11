@@ -1,9 +1,9 @@
 import type { FastifyInstance, FastifyRequest } from 'fastify';
 import type { PermissionValidationResult, PermissionValidator } from './permission-validator';
-import { PermissionValidatorUnauthorizedError } from './permission-validator-unauthorized-error';
-import { PermissionDeniedError } from './permission-denied-error';
-import { MalformedBrokerHeaderError } from './malformed-broker-header-error';
-import { AmbiguousBrokerTargetError } from './ambiguous-broker-target-error';
+import { PermissionValidatorUnauthorizedError } from './errors/permission-validator-unauthorized-error';
+import { PermissionDeniedError } from './errors/permission-denied-error';
+import { MalformedBrokerHeaderError } from './errors/malformed-broker-header-error';
+import { AmbiguousBrokerTargetError } from './errors/ambiguous-broker-target-error';
 import type { RouteProperties } from './route-properties';
 
 /** Header clients must send carrying their API key. */

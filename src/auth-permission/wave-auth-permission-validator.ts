@@ -1,6 +1,6 @@
 import { z } from 'zod';
-import { PermissionValidatorUnauthorizedError } from './permission-validator-unauthorized-error';
-import { PermissionValidatorUnavailableError } from './permission-validator-unavailable-error';
+import { PermissionValidatorUnauthorizedError } from './errors/permission-validator-unauthorized-error';
+import { PermissionValidatorUnavailableError } from './errors/permission-validator-unavailable-error';
 import type {
   PermissionValidationRequest,
   PermissionValidationResult,
