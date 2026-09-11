@@ -1,6 +1,6 @@
 {
   "name": "@wave-tech/framework",
-  "version": "0.12.0",
+  "version": "0.13.0",
   "description": "wave tech team shared utils framework",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -109,6 +109,11 @@
       "require": "./dist/audit/index.js",
       "default": "./dist/audit/index.js"
     },
+    "./auth": {
+      "types": "./dist/auth/index.d.ts",
+      "require": "./dist/auth/index.js",
+      "default": "./dist/auth/index.js"
+    },
     "./dbos": {
       "types": "./dist/dbos/index.d.ts",
       "require": "./dist/dbos/index.js",
@@ -152,6 +157,9 @@
       ],
       "audit": [
         "./dist/audit/index.d.ts"
+      ],
+      "auth": [
+        "./dist/auth/index.d.ts"
       ],
       "outbox-relay": [
         "./dist/outbox-relay/index.d.ts"
