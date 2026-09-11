@@ -24,10 +24,14 @@
   "license": "Apache-2.0",
   "peerDependencies": {
     "@dbos-inc/dbos-sdk": "^4.27.6",
-    "@prisma/client": ">=6.3.1"
+    "@prisma/client": ">=6.3.1",
+    "fastify": "^5.0.0"
   },
   "peerDependenciesMeta": {
     "@dbos-inc/dbos-sdk": {
+      "optional": true
+    },
+    "fastify": {
       "optional": true
     }
   },
@@ -54,6 +58,7 @@
     "eslint-plugin-import": "^2.31.0",
     "eslint-plugin-node": "^11.1.0",
     "eslint-plugin-promise": "^7.2.1",
+    "fastify": "^5.11.2",
     "globals": "^15.14.0",
     "husky": "^9.1.7",
     "ts-node": "^10.9.2",
@@ -128,6 +133,11 @@
       "types": "./dist/contracts/index.d.ts",
       "require": "./dist/contracts/index.js",
       "default": "./dist/contracts/index.js"
+    },
+    "./permission-auth": {
+      "types": "./dist/permission-auth/index.d.ts",
+      "require": "./dist/permission-auth/index.js",
+      "default": "./dist/permission-auth/index.js"
     }
   },
   "typesVersions": {
@@ -161,6 +171,9 @@
       ],
       "contracts": [
         "./dist/contracts/index.d.ts"
+      ],
+      "permission-auth": [
+        "./dist/permission-auth/index.d.ts"
       ]
     }
   }
