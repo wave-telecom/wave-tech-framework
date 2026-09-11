@@ -1,14 +1,14 @@
 # @wave-tech/framework/auth
 
-Integração com a **Wave Auth API**. Hoje cobre um passo: registrar, no deploy, o
-catálogo de permissions que o serviço declara no próprio código.
+Integration with the **Wave Auth API**. Today it covers one step: registering,
+at deploy time, the permission catalogue a service declares in its own code.
 
-## Por que fica aqui
+## Why it lives here
 
-O registro é a mesma operação em toda API que usa a Auth API — mesmo endpoint,
-mesmo corpo, mesma política de erro. O que varia é só a lista de nomes. Sem um
-util compartilhado, a décima aplicação inventa um `POST` com o corpo em outro
-formato e descobre no primeiro 403 em produção.
+The registration is the same operation in every API that authorises against the
+Auth API — same endpoint, same body, same error policy. Only the list of names
+differs. Left to each service, the tenth one invents a `POST` with another body
+shape and finds out on the first 403 in production.
 
 ## `registerPermissionCatalogue`
 
@@ -22,45 +22,48 @@ const { created, unchanged } = await registerPermissionCatalogue({
 });
 ```
 
-Faz `PUT {authApiUrl}/permissions` com `{ permissions: [{ name }] }` e o header
-`x-api-key`. A chave precisa ter `auth.permission.upsert`.
+Sends `PUT {authApiUrl}/permissions` with `{ permissions: [{ name }] }` and the
+`x-api-key` header. The key must hold `auth.permission.upsert`.
 
-| Parâmetro | Obrigatório | Observação |
+| Parameter | Required | Notes |
 |---|---|---|
-| `authApiUrl` | sim | Base da Auth API do ambiente, ex. `https://api.dev.acme.example/auth`. Barra final é normalizada. |
-| `apiKey` | sim | API key gerenciada com `auth.permission.upsert`. |
-| `permissions` | sim | Todos os nomes que o serviço declara. Lista vazia é recusada. |
-| `timeoutMs` | não | Padrão 10 s. |
+| `authApiUrl` | yes | The environment's Auth API base, e.g. `https://api.dev.acme.example/auth`. A trailing slash is normalised. |
+| `apiKey` | yes | Managed API key holding `auth.permission.upsert`. |
+| `permissions` | yes | Every name the service declares. An empty list is refused. |
+| `timeoutMs` | no | Defaults to 10 s. |
 
-Retorna `{ created, unchanged }` — o que a chamada registrou e o que já existia.
+Returns `{ created, unchanged }` — what the call registered, and what was
+already there.
 
-**A chamada é idempotente**, porque o endpoint é: registra os nomes que faltam e
-deixa o resto como está. Mandar a lista completa em todo deploy não cria nada
-depois da primeira vez.
+**The call is idempotent**, because the endpoint is: it registers the names the
+registry is missing and leaves the rest as they are. Sending the full list on
+every deploy creates nothing after the first.
 
-**Registrar não concede nada.** O nome passa a ser dizível; entregá-lo a um
-broker (`POST /brokers/{broker}/permissions`) e emitir keys que o citam
-continuam sendo passos operacionais, fora do pipeline.
+**Registering grants nothing.** The name becomes sayable; handing it to a broker
+(`POST /brokers/{broker}/permissions`) and minting keys that name it stay
+operational steps, outside any pipeline.
 
-### Falhas
+### Failures
 
-Lança `Error` em três casos, todos antes de chegar na rede quando possível:
+Throws an `Error` in three cases, each before reaching the network where it can:
 
-- `authApiUrl` ou `apiKey` vazios — um deploy job sem a variável pediria
-  `undefined/permissions` ou tomaria um 401 opaco.
-- `permissions` vazio — quase sempre um import quebrado, e o endpoint
-  responderia 200 sem registrar nada.
-- Resposta não-2xx — a mensagem carrega o status e o corpo, que é onde está o
-  problem detail dizendo qual chave foi recusada ou qual nome o schema rejeitou.
+- empty `authApiUrl` or `apiKey` — a deploy job missing the variable would
+  otherwise request `undefined/permissions`, or take an opaque 401.
+- empty `permissions` — almost always a broken import, and the endpoint would
+  answer 200 having registered nothing.
+- a non-2xx response — the message carries the status and the body, which is
+  where the problem detail says which key was refused or which name the schema
+  rejected.
 
-O util **não loga**: quem chama decide o que imprimir. Num script de bootstrap a
-saída vai para o Cloud Logging do projeto do tenant.
+It deliberately **does not log**: the caller decides what to print. In a
+bootstrap script that output goes to the tenant project's Cloud Logging.
 
-## Como usar no bootstrap
+## Using it from a bootstrap script
 
-`wave-foundation-iac` roda `scripts/bootstrap.js` da imagem do módulo como
-Cloud Run job depois de cada deploy — basta o arquivo existir na imagem, não há
-nada a registrar no IaC. O script é um orquestrador fino:
+`wave-foundation-iac` runs a module's `scripts/bootstrap.js` from its image as a
+Cloud Run job after each deploy — the file existing in the image is the whole
+opt-in, with nothing to register on the IaC side. The script is a thin
+orchestrator:
 
 ```js
 #!/usr/bin/env node
@@ -76,5 +79,6 @@ const { created, unchanged } = await registerPermissionCatalogue({
 console.log(`Permission catalogue: ${created.length} created, ${unchanged.length} unchanged`);
 ```
 
-O catálogo deve vir da **mesma fonte que o serviço usa para autorizar** — o
-registro rota → permission — e nunca de uma lista escrita à mão, que divergiria.
+The catalogue must come from the **same source the service authorises against**
+— its route → permission registry — and never from a hand-written list, which
+would drift.
