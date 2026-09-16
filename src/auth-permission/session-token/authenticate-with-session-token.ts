@@ -1,7 +1,7 @@
 import type { FastifyRequest } from 'fastify';
 import type { SessionTokenClaims, SessionTokenVerifier } from './session-token-verifier';
-import type { RouteProperties } from './route-properties';
-import { readBrokerId, resolveBrokerContext } from './broker-scope-resolution';
+import type { RouteProperties } from '../route-properties';
+import { readBrokerId, resolveBrokerContext } from '../shared/broker-scope-resolution';
 
 /**
  * The session-token counterpart to `checkApiKeyPermission`. There is no

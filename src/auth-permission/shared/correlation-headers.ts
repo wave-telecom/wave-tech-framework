@@ -1,4 +1,4 @@
-import { getHookCorrelationId } from '../core';
+import { getHookCorrelationId } from '../../core';
 
 /**
  * Builds the `x-correlation-id` header for an outbound request, propagating
