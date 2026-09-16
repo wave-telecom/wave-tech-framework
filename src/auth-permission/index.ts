@@ -11,7 +11,7 @@ export { correlationHeaders } from './shared/correlation-headers';
 export type { RouteProperties } from './route-properties';
 export type { BrokerContext } from './broker-context';
 export { requireBrokerContext } from './broker-context';
-export type { PermissionAuthOptions, AssertHasPermission } from './register-permission-auth';
+export type { PermissionAuthOptions, AssertHasPermission } from './fastify/register-permission-auth';
 export {
   registerPermissionAuth,
   API_KEY_HEADER,
@@ -19,7 +19,7 @@ export {
   BROKER_ID_HEADER,
   BROKER_ID_MAX_LENGTH,
   PUBLIC_PATHS,
-} from './register-permission-auth';
+} from './fastify/register-permission-auth';
 
 export {
   PermissionValidatorUnauthorizedError,

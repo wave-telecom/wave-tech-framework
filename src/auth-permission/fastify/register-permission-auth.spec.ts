@@ -8,22 +8,22 @@ import {
   AUTHORIZATION_HEADER,
   BROKER_ID_HEADER,
 } from './register-permission-auth';
-import { requireBrokerContext } from './broker-context';
-import { PermissionValidatorUnauthorizedError } from './errors/permission-validator-unauthorized-error';
-import { PermissionValidatorUnavailableError } from './errors/permission-validator-unavailable-error';
-import { PermissionDeniedError } from './errors/permission-denied-error';
-import { MalformedBrokerHeaderError } from './errors/malformed-broker-header-error';
-import { AmbiguousBrokerTargetError } from './errors/ambiguous-broker-target-error';
-import { BrokerContextNotResolvedError } from './errors/broker-context-not-resolved-error';
-import { SessionTokenInvalidError } from './errors/session-token-invalid-error';
-import { TooManyRequestsError } from './errors/too-many-requests-error';
+import { requireBrokerContext } from '../broker-context';
+import { PermissionValidatorUnauthorizedError } from '../errors/permission-validator-unauthorized-error';
+import { PermissionValidatorUnavailableError } from '../errors/permission-validator-unavailable-error';
+import { PermissionDeniedError } from '../errors/permission-denied-error';
+import { MalformedBrokerHeaderError } from '../errors/malformed-broker-header-error';
+import { AmbiguousBrokerTargetError } from '../errors/ambiguous-broker-target-error';
+import { BrokerContextNotResolvedError } from '../errors/broker-context-not-resolved-error';
+import { SessionTokenInvalidError } from '../errors/session-token-invalid-error';
+import { TooManyRequestsError } from '../errors/too-many-requests-error';
 import type {
   PermissionValidationRequest,
   PermissionValidationResult,
   PermissionValidator,
-} from './api-key/permission-validator';
-import type { SessionTokenClaims, SessionTokenVerifier } from './session-token/session-token-verifier';
-import type { RouteProperties } from './route-properties';
+} from '../api-key/permission-validator';
+import type { SessionTokenClaims, SessionTokenVerifier } from '../session-token/session-token-verifier';
+import type { RouteProperties } from '../route-properties';
 
 const API_KEY = 'test-secret-key';
 const SESSION_TOKEN = 'test-session-token';

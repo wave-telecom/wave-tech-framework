@@ -1,5 +1,5 @@
 import type { FastifyRequest } from 'fastify';
-import { readApiKey, readBearerToken } from '../shared/read-credentials';
+import { readApiKey, readBearerToken } from '../../shared/read-credentials';
 import { toWaveRequest } from '../to-wave-request';
 
 /**
