@@ -1,11 +1,12 @@
 import type { FastifyInstance, FastifyRequest } from 'fastify';
-import type { PermissionValidationResult, PermissionValidator } from './permission-validator';
-import type { SessionTokenClaims, SessionTokenVerifier } from './session-token-verifier';
+import type { PermissionValidator } from './permission-validator';
+import type { SessionTokenVerifier } from './session-token-verifier';
 import { PermissionValidatorUnauthorizedError } from './errors/permission-validator-unauthorized-error';
 import { PermissionDeniedError } from './errors/permission-denied-error';
-import { MalformedBrokerHeaderError } from './errors/malformed-broker-header-error';
-import { AmbiguousBrokerTargetError } from './errors/ambiguous-broker-target-error';
 import type { RouteProperties } from './route-properties';
+import { countRawHeader } from './raw-headers';
+import { checkApiKeyPermission } from './check-api-key-permission';
+import { authenticateWithSessionToken } from './authenticate-with-session-token';
 
 /** Header clients must send carrying their API key. */
 export const API_KEY_HEADER = 'x-api-key';
@@ -55,47 +56,6 @@ function findRoute(
   return routes[routeKey];
 }
 
-/**
- * Reads the broker id header, read from `rawHeaders` rather than `headers`:
- * Node folds a repeated header into `'b1, b2'` in `headers`, which would be
- * indistinguishable from a single opaque broker id that happens to contain a
- * comma — `rawHeaders` keeps each occurrence separate so a repeated header
- * is detected instead of silently accepted as one value.
- */
-function readBrokerId(
-  request: FastifyRequest,
-  brokerIdHeader: string,
-  brokerIdMaxLength: number,
-): string | undefined {
-  const header = request.headers[brokerIdHeader];
-  if (Array.isArray(header) || countRawHeader(request.raw.rawHeaders, brokerIdHeader) > 1) {
-    throw new MalformedBrokerHeaderError(`The ${brokerIdHeader} header must be sent at most once`);
-  }
-
-  if (header === undefined) {
-    return undefined;
-  }
-
-  if (header.length === 0 || header.length > brokerIdMaxLength) {
-    throw new MalformedBrokerHeaderError(
-      `The ${brokerIdHeader} header must be between 1 and ${brokerIdMaxLength} characters`,
-    );
-  }
-
-  return header;
-}
-
-function countRawHeader(rawHeaders: readonly string[] | undefined, headerName: string): number {
-  const headers = rawHeaders ?? [];
-  let count = 0;
-  for (let index = 0; index + 1 < headers.length; index += 2) {
-    if (headers[index].toLowerCase() === headerName) {
-      count += 1;
-    }
-  }
-  return count;
-}
-
 function readApiKey(request: FastifyRequest, apiKeyHeader: string): string | undefined {
   const header = request.headers[apiKeyHeader];
   return typeof header === 'string' && header.length > 0 ? header : undefined;
@@ -119,113 +79,19 @@ function readBearerToken(request: FastifyRequest, authorizationHeader: string): 
   return match?.[1];
 }
 
-function requiresSingleBroker(request: FastifyRequest, route: RouteProperties): boolean {
-  if (route.singleBrokerWhen) {
-    return route.singleBrokerWhen(request);
-  }
-  return route.singleBroker ?? true;
-}
-
-/**
- * The shared tail of both credential paths: empty scope -> deny, more than
- * one broker on a route that requires exactly one -> ambiguous, otherwise
- * resolve `request.brokerContext`. `emptyScopeMessage` differs per caller
- * because an empty API-key scope and an empty session-token scope are
- * different failures worth describing differently.
- */
-function resolveBrokerContext(
-  request: FastifyRequest,
-  route: RouteProperties,
-  brokers: readonly string[],
-  emptyScopeMessage: string,
-): void {
-  if (brokers.length === 0) {
-    throw new PermissionDeniedError(emptyScopeMessage);
-  }
-
-  if (brokers.length > 1 && requiresSingleBroker(request, route)) {
-    throw new AmbiguousBrokerTargetError(
-      'This operation applies to a single broker: send the x-broker-id header to select one',
-    );
-  }
-
-  request.brokerContext = Object.freeze({ scope: Object.freeze([...brokers]) });
-}
-
-/**
- * Everything after the API key is known to be present: reads the broker id
- * header (if any), calls `validate`, and resolves `request.brokerContext`.
- * Shared by the route-map hook and by the standalone `assertHasPermission`
- * it returns, so the two never drift on this part of the contract.
- */
-async function checkRoutePermission(
-  request: FastifyRequest,
-  route: RouteProperties,
-  apiKey: string,
-  validator: PermissionValidator,
-  brokerIdHeader: string,
-  brokerIdMaxLength: number,
-): Promise<void> {
-  const brokerId = readBrokerId(request, brokerIdHeader, brokerIdMaxLength);
-
-  // The key is forwarded byte for byte: this module never stores, derives or
-  // compares a key's secret — authorization is wave-auth-api's job alone.
-  const result: PermissionValidationResult = await validator.validate({
-    apiKey,
-    permission: route.permissionName,
-    ...(brokerId === undefined ? {} : { brokers: [brokerId] }),
-  });
-
-  if (!result.authorized) {
-    throw new PermissionDeniedError(`The API key does not have the ${route.permissionName} permission`);
-  }
-
-  resolveBrokerContext(
-    request,
-    route,
-    result.brokers,
-    `The API key does not have the ${route.permissionName} permission`,
-  );
-}
-
-/**
- * The session-token counterpart to `checkRoutePermission`. There is no
- * permission verdict to ask for — wave-auth-api's session tokens
- * deliberately carry no `permissions` claim — so a route only reaches this
- * path by opting in via `acceptsSessionToken`, and the token's `brokers`
- * claim (optionally narrowed by `x-broker-id`, the same as an API key's
- * scope) becomes the resolved broker context directly.
- */
-async function authenticateWithSessionToken(
-  request: FastifyRequest,
-  route: RouteProperties,
-  token: string,
-  verifier: SessionTokenVerifier,
-  brokerIdHeader: string,
-  brokerIdMaxLength: number,
-): Promise<void> {
-  const claims: SessionTokenClaims = await verifier.verify(token);
-  const brokerId = readBrokerId(request, brokerIdHeader, brokerIdMaxLength);
-  const brokers =
-    brokerId === undefined ? claims.brokers : restrictToBroker(claims.brokers, brokerId);
-
-  resolveBrokerContext(
-    request,
-    route,
-    brokers,
-    'The session token does not carry an authorized broker scope',
-  );
-}
-
-function restrictToBroker(brokers: readonly string[], brokerId: string): readonly string[] {
-  return brokers.includes(brokerId) ? [brokerId] : [];
-}
-
 /**
  * Registers an `onRequest` hook that authenticates and authorizes every
  * request against wave-auth-api, and returns the same check bound to
  * `validator` for use outside the route map (e.g. a vendor webhook whose
  * permission isn't one of this app's own routes).
+ *
+ * Deliberately does no rate limiting of its own: this hook runs inside a
+ * shared framework used by many independently deployed services, each with
+ * its own traffic profile, so a one-size-fits-all limit here would be either
+ * too strict for some or meaningless for others. Rate limiting is expected
+ * at the infrastructure/gateway layer per consuming service — the same
+ * layer wave-auth-api itself relies on (Cloud Armor, configured in its own
+ * IaC), not inside application code.
  *
  * The order of checks is contractual, not stylistic:
  *
@@ -272,7 +138,7 @@ export function registerPermissionAuth(
   const assertHasPermission: AssertHasPermission = async (request, route) => {
     const apiKey = readApiKey(request, apiKeyHeader);
     if (apiKey !== undefined) {
-      await checkRoutePermission(
+      await checkApiKeyPermission(
         request,
         route,
         apiKey,
