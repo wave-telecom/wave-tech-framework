@@ -1,6 +1,6 @@
 import type { FastifyInstance, FastifyRequest } from 'fastify';
 import type { CreateRateLimitOptions } from '@fastify/rate-limit';
-import { TooManyRequestsError } from './errors/too-many-requests-error';
+import { TooManyRequestsError } from '../errors/too-many-requests-error';
 
 export type RateLimitCheck = (request: FastifyRequest) => Promise<void>;
 

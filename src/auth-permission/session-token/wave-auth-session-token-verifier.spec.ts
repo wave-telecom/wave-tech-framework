@@ -1,7 +1,7 @@
 import { describe, it, expect, afterEach, vi } from 'vitest';
 import { generateKeyPair, exportJWK, SignJWT, type JWK } from 'jose';
 import { WaveAuthSessionTokenVerifier } from './wave-auth-session-token-verifier';
-import { SessionTokenInvalidError } from './errors/session-token-invalid-error';
+import { SessionTokenInvalidError } from '../errors/session-token-invalid-error';
 
 const BASE_URL = 'https://auth.internal.example';
 const JWKS_URL = `${BASE_URL}/.well-known/jwks.json`;

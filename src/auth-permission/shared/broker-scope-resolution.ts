@@ -1,8 +1,8 @@
 import type { FastifyRequest } from 'fastify';
-import { PermissionDeniedError } from './errors/permission-denied-error';
-import { MalformedBrokerHeaderError } from './errors/malformed-broker-header-error';
-import { AmbiguousBrokerTargetError } from './errors/ambiguous-broker-target-error';
-import type { RouteProperties } from './route-properties';
+import { PermissionDeniedError } from '../errors/permission-denied-error';
+import { MalformedBrokerHeaderError } from '../errors/malformed-broker-header-error';
+import { AmbiguousBrokerTargetError } from '../errors/ambiguous-broker-target-error';
+import type { RouteProperties } from '../route-properties';
 import { countRawHeader } from './raw-headers';
 
 /**

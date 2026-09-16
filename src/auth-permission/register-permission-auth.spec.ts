@@ -21,8 +21,8 @@ import type {
   PermissionValidationRequest,
   PermissionValidationResult,
   PermissionValidator,
-} from './permission-validator';
-import type { SessionTokenClaims, SessionTokenVerifier } from './session-token-verifier';
+} from './api-key/permission-validator';
+import type { SessionTokenClaims, SessionTokenVerifier } from './session-token/session-token-verifier';
 import type { RouteProperties } from './route-properties';
 
 const API_KEY = 'test-secret-key';

@@ -1,8 +1,8 @@
 import type { FastifyRequest } from 'fastify';
 import type { PermissionValidationResult, PermissionValidator } from './permission-validator';
-import { PermissionDeniedError } from './errors/permission-denied-error';
-import type { RouteProperties } from './route-properties';
-import { readBrokerId, resolveBrokerContext } from './broker-scope-resolution';
+import { PermissionDeniedError } from '../errors/permission-denied-error';
+import type { RouteProperties } from '../route-properties';
+import { readBrokerId, resolveBrokerContext } from '../shared/broker-scope-resolution';
 
 /**
  * Authenticates and authorizes an `x-api-key` credential against

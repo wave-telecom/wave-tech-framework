@@ -1,12 +1,12 @@
 import { z } from 'zod';
-import { PermissionValidatorUnauthorizedError } from './errors/permission-validator-unauthorized-error';
-import { PermissionValidatorUnavailableError } from './errors/permission-validator-unavailable-error';
+import { PermissionValidatorUnauthorizedError } from '../errors/permission-validator-unauthorized-error';
+import { PermissionValidatorUnavailableError } from '../errors/permission-validator-unavailable-error';
 import type {
   PermissionValidationRequest,
   PermissionValidationResult,
   PermissionValidator,
 } from './permission-validator';
-import { correlationHeaders } from './correlation-headers';
+import { correlationHeaders } from '../shared/correlation-headers';
 
 /** Not version-prefixed: this is the path wave-auth-api itself publishes. */
 const VALIDATE_PATH = '/auth/permissions/validate';

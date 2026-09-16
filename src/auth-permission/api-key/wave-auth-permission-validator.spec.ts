@@ -1,8 +1,8 @@
 import { describe, it, expect, afterEach, vi } from 'vitest';
-import { setHookContext, setHookCorrelationId } from '../core';
+import { setHookContext, setHookCorrelationId } from '../../core';
 import { WaveAuthPermissionValidator } from './wave-auth-permission-validator';
-import { PermissionValidatorUnauthorizedError } from './errors/permission-validator-unauthorized-error';
-import { PermissionValidatorUnavailableError } from './errors/permission-validator-unavailable-error';
+import { PermissionValidatorUnauthorizedError } from '../errors/permission-validator-unauthorized-error';
+import { PermissionValidatorUnavailableError } from '../errors/permission-validator-unavailable-error';
 import type { PermissionValidationRequest } from './permission-validator';
 
 const BASE_URL = 'https://auth.internal.example';

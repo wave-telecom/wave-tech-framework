@@ -1,6 +1,6 @@
 import { createRemoteJWKSet, jwtVerify } from 'jose';
 import { z } from 'zod';
-import { SessionTokenInvalidError } from './errors/session-token-invalid-error';
+import { SessionTokenInvalidError } from '../errors/session-token-invalid-error';
 import type { SessionTokenClaims, SessionTokenVerifier } from './session-token-verifier';
 
 /** Not version-prefixed: this is the path wave-auth-api itself publishes. */

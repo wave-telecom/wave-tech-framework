@@ -2,11 +2,11 @@ export type {
   PermissionValidationRequest,
   PermissionValidationResult,
   PermissionValidator,
-} from './permission-validator';
-export { WaveAuthPermissionValidator } from './wave-auth-permission-validator';
-export type { SessionTokenClaims, SessionTokenVerifier } from './session-token-verifier';
-export { WaveAuthSessionTokenVerifier } from './wave-auth-session-token-verifier';
-export { correlationHeaders } from './correlation-headers';
+} from './api-key/permission-validator';
+export { WaveAuthPermissionValidator } from './api-key/wave-auth-permission-validator';
+export type { SessionTokenClaims, SessionTokenVerifier } from './session-token/session-token-verifier';
+export { WaveAuthSessionTokenVerifier } from './session-token/wave-auth-session-token-verifier';
+export { correlationHeaders } from './shared/correlation-headers';
 
 export type { RouteProperties } from './route-properties';
 export type { BrokerContext } from './broker-context';

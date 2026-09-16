@@ -1,5 +1,5 @@
 import type { FastifyRequest } from 'fastify';
-import { readApiKey, readBearerToken } from './read-credentials';
+import { readApiKey, readBearerToken } from '../shared/read-credentials';
 
 /**
  * The default `keyGenerator` for `PermissionAuthOptions.rateLimit`: buckets
