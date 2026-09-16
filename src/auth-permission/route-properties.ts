@@ -32,4 +32,14 @@ export interface RouteProperties {
    * decision, trusting only the token's broker scope. Defaults to `false`.
    */
   acceptsSessionToken?: boolean;
+  /**
+   * Set to `false` for a route that isn't scoped to any particular
+   * broker at all — e.g. a tenant-wide operation, authorized for the
+   * credential's whole tenant rather than a subset of its brokers. Skips
+   * broker scope resolution entirely: `x-broker-id` is not read, an empty
+   * broker scope on the verdict/token is not treated as a denial, and
+   * `request.brokerContext` is left unset — a handler for a route like
+   * this must not call `requireBrokerContext`. Defaults to `true`.
+   */
+  brokerScoped?: boolean;
 }

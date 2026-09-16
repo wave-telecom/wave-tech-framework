@@ -46,6 +46,10 @@ function requiresSingleBroker(request: FastifyRequest, route: RouteProperties): 
  * `emptyScopeMessage` differs per caller because an empty API-key scope and
  * an empty session-token scope are different failures worth describing
  * differently.
+ *
+ * A no-op for a route with `brokerScoped: false`: nothing here applies to an
+ * operation that isn't scoped to any particular broker in the first place,
+ * and `request.brokerContext` is deliberately left unset for it.
  */
 export function resolveBrokerContext(
   request: FastifyRequest,
@@ -53,6 +57,10 @@ export function resolveBrokerContext(
   brokers: readonly string[],
   emptyScopeMessage: string,
 ): void {
+  if (route.brokerScoped === false) {
+    return;
+  }
+
   if (brokers.length === 0) {
     throw new PermissionDeniedError(emptyScopeMessage);
   }

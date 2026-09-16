@@ -19,7 +19,9 @@ export async function checkApiKeyPermission(
   brokerIdHeader: string,
   brokerIdMaxLength: number,
 ): Promise<void> {
-  const brokerId = readBrokerId(request, brokerIdHeader, brokerIdMaxLength);
+  const brokerId = route.brokerScoped === false
+    ? undefined
+    : readBrokerId(request, brokerIdHeader, brokerIdMaxLength);
 
   // The key is forwarded byte for byte: this module never stores, derives or
   // compares a key's secret — authorization is wave-auth-api's job alone.
