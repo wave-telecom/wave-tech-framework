@@ -10,6 +10,8 @@ import { authenticateWithSessionToken } from './session-token/authenticate-with-
 import { readApiKey, readBearerToken } from './shared/read-credentials';
 import { credentialRateLimitKey } from './rate-limit/rate-limit-key';
 import { createRateLimitCheck } from './rate-limit/rate-limit-check';
+import { toWaveRequest } from './to-wave-request';
+import { isPublicPath } from './shared/is-public-path';
 
 /** Header clients must send carrying their API key. */
 export const API_KEY_HEADER = 'x-api-key';
@@ -57,10 +59,6 @@ export type AssertHasPermission = (
   request: FastifyRequest,
   route: RouteProperties,
 ) => Promise<void>;
-
-function isPublicPath(path: string, publicPaths: readonly string[]): boolean {
-  return publicPaths.some((p) => path === p || path.startsWith(`${p}/`));
-}
 
 /**
  * A plain index access (`routes[key]`) types as `RouteProperties`, not
@@ -147,20 +145,24 @@ export function registerPermissionAuth(
   }
 
   const assertHasPermission: AssertHasPermission = async (request, route) => {
-    const apiKey = readApiKey(request, apiKeyHeader);
+    const waveRequest = toWaveRequest(request);
+    const apiKey = readApiKey(waveRequest, apiKeyHeader);
     if (apiKey !== undefined) {
-      await checkApiKeyPermission(
-        request,
+      const ctx = await checkApiKeyPermission(
+        waveRequest,
         route,
         apiKey,
         options.validator,
         brokerIdHeader,
         brokerIdMaxLength,
       );
+      if (ctx !== undefined) {
+        request.brokerContext = ctx;
+      }
       return;
     }
 
-    const token = readBearerToken(request, authorizationHeader);
+    const token = readBearerToken(waveRequest, authorizationHeader);
     if (token === undefined || route.acceptsSessionToken !== true) {
       throw new PermissionValidatorUnauthorizedError();
     }
@@ -174,14 +176,17 @@ export function registerPermissionAuth(
       throw new Error('acceptsSessionToken route reached with no sessionTokenVerifier configured');
     }
 
-    await authenticateWithSessionToken(
-      request,
+    const ctx = await authenticateWithSessionToken(
+      waveRequest,
       route,
       token,
       options.sessionTokenVerifier,
       brokerIdHeader,
       brokerIdMaxLength,
     );
+    if (ctx !== undefined) {
+      request.brokerContext = ctx;
+    }
   };
 
   app.addHook('onRequest', async (request: FastifyRequest) => {
@@ -194,9 +199,10 @@ export function registerPermissionAuth(
       await checkRateLimit(request);
     }
 
+    const waveRequest = toWaveRequest(request);
     const hasCredential =
-      readApiKey(request, apiKeyHeader) !== undefined ||
-      readBearerToken(request, authorizationHeader) !== undefined;
+      readApiKey(waveRequest, apiKeyHeader) !== undefined ||
+      readBearerToken(waveRequest, authorizationHeader) !== undefined;
     if (!hasCredential) {
       throw new PermissionValidatorUnauthorizedError();
     }

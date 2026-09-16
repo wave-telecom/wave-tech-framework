@@ -25,10 +25,18 @@
   "peerDependencies": {
     "@dbos-inc/dbos-sdk": "^4.27.6",
     "@prisma/client": ">=6.3.1",
+    "@types/express": "^4.17.21",
+    "express": "^4.21.2",
     "fastify": "^5.0.0"
   },
   "peerDependenciesMeta": {
     "@dbos-inc/dbos-sdk": {
+      "optional": true
+    },
+    "@types/express": {
+      "optional": true
+    },
+    "express": {
       "optional": true
     },
     "fastify": {
@@ -38,11 +46,11 @@
   "dependencies": {
     "@fastify/rate-limit": "^11.2.0",
     "date-fns": "^4.1.0",
-    "express": "^4.21.2",
     "google-auth-library": "^9.15.1",
     "hono": "^4.8.5",
     "jose": "^6.2.12",
     "mathjs": "^14.2.1",
+    "path-to-regexp": "8.4.2",
     "uuid": "^11.0.5",
     "winston": "^3.17.0",
     "zod": "^4.4.3"
@@ -51,7 +59,7 @@
     "@dbos-inc/dbos-sdk": "^4.27.6",
     "@eslint/js": "^9.20.0",
     "@prisma/client": "^6.3.1",
-    "@types/express": "^5.0.0",
+    "@types/express": "^4.17.21",
     "@types/node": "^24.0.0",
     "@typescript-eslint/parser": "^8.24.0",
     "cross-env": "^7.0.3",
@@ -60,6 +68,7 @@
     "eslint-plugin-import": "^2.31.0",
     "eslint-plugin-node": "^11.1.0",
     "eslint-plugin-promise": "^7.2.1",
+    "express": "^4.21.2",
     "fastify": "^5.11.2",
     "globals": "^15.14.0",
     "husky": "^9.1.7",
@@ -140,6 +149,11 @@
       "types": "./dist/auth-permission/index.d.ts",
       "require": "./dist/auth-permission/index.js",
       "default": "./dist/auth-permission/index.js"
+    },
+    "./auth-permission/express": {
+      "types": "./dist/auth-permission/express/index.d.ts",
+      "require": "./dist/auth-permission/express/index.js",
+      "default": "./dist/auth-permission/express/index.js"
     }
   },
   "typesVersions": {
@@ -176,6 +190,9 @@
       ],
       "auth-permission": [
         "./dist/auth-permission/index.d.ts"
+      ],
+      "auth-permission/express": [
+        "./dist/auth-permission/express/index.d.ts"
       ]
     }
   }

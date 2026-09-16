@@ -1,5 +1,6 @@
 import type { FastifyRequest } from 'fastify';
 import { readApiKey, readBearerToken } from '../shared/read-credentials';
+import { toWaveRequest } from '../to-wave-request';
 
 /**
  * The default `keyGenerator` for `PermissionAuthOptions.rateLimit`: buckets
@@ -14,8 +15,12 @@ export function credentialRateLimitKey(
   apiKeyHeader: string,
   authorizationHeader: string,
 ): (request: FastifyRequest) => string {
-  return (request) =>
-    readApiKey(request, apiKeyHeader) ??
-    readBearerToken(request, authorizationHeader) ??
-    request.ip;
+  return (request) => {
+    const waveRequest = toWaveRequest(request);
+    return (
+      readApiKey(waveRequest, apiKeyHeader) ??
+      readBearerToken(waveRequest, authorizationHeader) ??
+      request.ip
+    );
+  };
 }

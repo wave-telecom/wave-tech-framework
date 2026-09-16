@@ -1,16 +1,11 @@
-import type { FastifyRequest } from 'fastify';
 import { BrokerContextNotResolvedError } from './errors/broker-context-not-resolved-error';
 
-/** The broker scope `registerPermissionAuth` resolved for the in-flight request. Never empty. */
+/**
+ * The broker scope `registerPermissionAuth`/`expressRegisterPermissionAuth`
+ * resolved for the in-flight request. Never empty.
+ */
 export interface BrokerContext {
   readonly scope: readonly string[];
-}
-
-declare module 'fastify' {
-  interface FastifyRequest {
-    /** Set by `registerPermissionAuth`'s hook. Absent on public paths. */
-    brokerContext?: BrokerContext;
-  }
 }
 
 /**
@@ -18,8 +13,15 @@ declare module 'fastify' {
  * protects gets one — a missing context here is a route-wiring defect
  * (e.g. this route bypasses the hook somehow), not something a caller
  * triggered, hence the `500` instead of a `4xx`.
+ *
+ * Framework-neutral by design: the actual `brokerContext?: BrokerContext`
+ * augmentation of the real request type lives next to each framework's own
+ * orchestrator (`to-wave-request.ts` for Fastify, `express/express-request.ts`
+ * for Express), never here — this file is on the shared export path, and an
+ * Express-only consumer resolving a `declare module 'fastify'` augmentation
+ * here would drag in an unresolvable `fastify` type import for no reason.
  */
-export function requireBrokerContext(request: FastifyRequest): BrokerContext {
+export function requireBrokerContext(request: { brokerContext?: BrokerContext }): BrokerContext {
   if (request.brokerContext === undefined) {
     throw new BrokerContextNotResolvedError();
   }
