@@ -1,7 +1,12 @@
 import { request as httpRequest } from 'node:http';
 import Fastify, { type FastifyInstance, type FastifyReply } from 'fastify';
 import { describe, it, expect, afterEach } from 'vitest';
-import { registerPermissionAuth, API_KEY_HEADER, BROKER_ID_HEADER } from './register-permission-auth';
+import {
+  registerPermissionAuth,
+  API_KEY_HEADER,
+  AUTHORIZATION_HEADER,
+  BROKER_ID_HEADER,
+} from './register-permission-auth';
 import { requireBrokerContext } from './broker-context';
 import { PermissionValidatorUnauthorizedError } from './errors/permission-validator-unauthorized-error';
 import { PermissionValidatorUnavailableError } from './errors/permission-validator-unavailable-error';
@@ -9,14 +14,17 @@ import { PermissionDeniedError } from './errors/permission-denied-error';
 import { MalformedBrokerHeaderError } from './errors/malformed-broker-header-error';
 import { AmbiguousBrokerTargetError } from './errors/ambiguous-broker-target-error';
 import { BrokerContextNotResolvedError } from './errors/broker-context-not-resolved-error';
+import { SessionTokenInvalidError } from './errors/session-token-invalid-error';
 import type {
   PermissionValidationRequest,
   PermissionValidationResult,
   PermissionValidator,
 } from './permission-validator';
+import type { SessionTokenClaims, SessionTokenVerifier } from './session-token-verifier';
 import type { RouteProperties } from './route-properties';
 
 const API_KEY = 'test-secret-key';
+const SESSION_TOKEN = 'test-session-token';
 const PERMISSION = 'carrier.delivery_order.create';
 
 /** Records every call and resolves each one through a caller-supplied function. */
@@ -45,6 +53,22 @@ const denies = (brokers: string[] = []): FakePermissionValidator =>
 const throwing = (error: Error): FakePermissionValidator =>
   new FakePermissionValidator(() => error);
 
+/** Records every call and resolves each one through a caller-supplied function. */
+class FakeSessionTokenVerifier implements SessionTokenVerifier {
+  public readonly calls: string[] = [];
+
+  constructor(private readonly resolve: (token: string) => SessionTokenClaims | Error) {}
+
+  verify(token: string): Promise<SessionTokenClaims> {
+    this.calls.push(token);
+    const outcome = this.resolve(token);
+    return outcome instanceof Error ? Promise.reject(outcome) : Promise.resolve(outcome);
+  }
+}
+
+const verifiesAs = (claims: SessionTokenClaims): FakeSessionTokenVerifier =>
+  new FakeSessionTokenVerifier(() => claims);
+
 /** Mirrors what a consuming app's own global error handler does: one instanceof per error class. */
 function testErrorHandler(error: Error, request: unknown, reply: FastifyReply): void {
   if (error instanceof PermissionValidatorUnauthorizedError) {
@@ -71,11 +95,16 @@ function testErrorHandler(error: Error, request: unknown, reply: FastifyReply): 
     reply.status(500).send({ type: 'broker-context-not-resolved', message: error.message });
     return;
   }
+  if (error instanceof SessionTokenInvalidError) {
+    reply.status(401).send({ type: 'session-token-invalid', message: error.message });
+    return;
+  }
   reply.status(500).send({ type: 'unexpected', message: error.message });
 }
 
 interface BuildAppOptions {
   validator: PermissionValidator;
+  sessionTokenVerifier?: SessionTokenVerifier;
   routes?: Readonly<Record<string, RouteProperties>>;
   publicPaths?: string[];
   brokerIdMaxLength?: number;
@@ -97,6 +126,7 @@ function buildTestApp(options: BuildAppOptions): FastifyInstance {
 
   const assertHasPermission = registerPermissionAuth(app, {
     validator: options.validator,
+    sessionTokenVerifier: options.sessionTokenVerifier,
     routes,
     publicPaths: options.publicPaths,
     brokerIdMaxLength: options.brokerIdMaxLength,
@@ -109,6 +139,7 @@ function buildTestApp(options: BuildAppOptions): FastifyInstance {
   app.get('/multi-broker-conditional', (request) => ({
     scope: requireBrokerContext(request).scope,
   }));
+  app.get('/session-scoped', (request) => ({ scope: requireBrokerContext(request).scope }));
   // Registered with Fastify but deliberately absent from `routes` above.
   app.get('/registered-but-unmapped', () => ({ ok: true }));
   // A path the global hook treats as public (via publicPaths), whose own
@@ -533,6 +564,152 @@ describe('registerPermissionAuth', () => {
       });
 
       expect(res.statusCode).toBe(400);
+    });
+  });
+
+  describe('session tokens (Authorization: Bearer)', () => {
+    it('throws synchronously if a route opts in without a sessionTokenVerifier configured', () => {
+      app = Fastify({ logger: false });
+
+      expect(() =>
+        registerPermissionAuth(app, {
+          validator: authorizes(),
+          routes: { 'GET /session-scoped': { permissionName: PERMISSION, acceptsSessionToken: true } },
+        }),
+      ).toThrow(/sessionTokenVerifier/);
+    });
+
+    it('rejects a bearer-only request on a route that does not accept session tokens (401), without verifying it', async () => {
+      const validator = authorizes();
+      const sessionTokenVerifier = verifiesAs({ sub: 'key-1', brokers: ['tim'] });
+      app = buildTestApp({ validator, sessionTokenVerifier });
+
+      const res = await app.inject({
+        method: 'POST',
+        url: '/protected',
+        headers: { [AUTHORIZATION_HEADER]: `Bearer ${SESSION_TOKEN}` },
+      });
+
+      expect(res.statusCode).toBe(401);
+      expect(sessionTokenVerifier.calls).toHaveLength(0);
+      expect(validator.calls).toHaveLength(0);
+    });
+
+    it('authenticates a route that opts in, without ever calling the permission validator', async () => {
+      const validator = authorizes();
+      const sessionTokenVerifier = verifiesAs({ sub: 'key-1', brokers: ['tim'] });
+      app = buildTestApp({
+        validator,
+        sessionTokenVerifier,
+        routes: { 'GET /session-scoped': { permissionName: PERMISSION, acceptsSessionToken: true } },
+      });
+
+      const res = await app.inject({
+        method: 'GET',
+        url: '/session-scoped',
+        headers: { [AUTHORIZATION_HEADER]: `Bearer ${SESSION_TOKEN}` },
+      });
+
+      expect(res.statusCode).toBe(200);
+      expect(res.json()).toEqual({ scope: ['tim'] });
+      expect(sessionTokenVerifier.calls).toEqual([SESSION_TOKEN]);
+      expect(validator.calls).toHaveLength(0);
+    });
+
+    it('prefers x-api-key over a bearer token when both are present', async () => {
+      const validator = authorizes(['tim']);
+      const sessionTokenVerifier = verifiesAs({ sub: 'key-1', brokers: ['other-broker'] });
+      app = buildTestApp({
+        validator,
+        sessionTokenVerifier,
+        routes: { 'GET /session-scoped': { permissionName: PERMISSION, acceptsSessionToken: true } },
+      });
+
+      const res = await app.inject({
+        method: 'GET',
+        url: '/session-scoped',
+        headers: { [API_KEY_HEADER]: API_KEY, [AUTHORIZATION_HEADER]: `Bearer ${SESSION_TOKEN}` },
+      });
+
+      expect(res.statusCode).toBe(200);
+      expect(res.json()).toEqual({ scope: ['tim'] });
+      expect(validator.calls).toHaveLength(1);
+      expect(sessionTokenVerifier.calls).toHaveLength(0);
+    });
+
+    it('rejects an invalid session token (401)', async () => {
+      const validator = authorizes();
+      const sessionTokenVerifier = new FakeSessionTokenVerifier(
+        () => new SessionTokenInvalidError('bad signature'),
+      );
+      app = buildTestApp({
+        validator,
+        sessionTokenVerifier,
+        routes: { 'GET /session-scoped': { permissionName: PERMISSION, acceptsSessionToken: true } },
+      });
+
+      const res = await app.inject({
+        method: 'GET',
+        url: '/session-scoped',
+        headers: { [AUTHORIZATION_HEADER]: `Bearer ${SESSION_TOKEN}` },
+      });
+
+      expect(res.statusCode).toBe(401);
+    });
+
+    it('rejects a multi-broker token scope on a route that requires exactly one, without x-broker-id (400)', async () => {
+      const validator = authorizes();
+      const sessionTokenVerifier = verifiesAs({ sub: 'key-1', brokers: ['broker-a', 'broker-b'] });
+      app = buildTestApp({
+        validator,
+        sessionTokenVerifier,
+        routes: { 'GET /session-scoped': { permissionName: PERMISSION, acceptsSessionToken: true } },
+      });
+
+      const res = await app.inject({
+        method: 'GET',
+        url: '/session-scoped',
+        headers: { [AUTHORIZATION_HEADER]: `Bearer ${SESSION_TOKEN}` },
+      });
+
+      expect(res.statusCode).toBe(400);
+    });
+
+    it('restricts a multi-broker token scope with x-broker-id, the same as an API key', async () => {
+      const validator = authorizes();
+      const sessionTokenVerifier = verifiesAs({ sub: 'key-1', brokers: ['broker-a', 'broker-b'] });
+      app = buildTestApp({
+        validator,
+        sessionTokenVerifier,
+        routes: { 'GET /session-scoped': { permissionName: PERMISSION, acceptsSessionToken: true } },
+      });
+
+      const res = await app.inject({
+        method: 'GET',
+        url: '/session-scoped',
+        headers: { [AUTHORIZATION_HEADER]: `Bearer ${SESSION_TOKEN}`, [BROKER_ID_HEADER]: 'broker-a' },
+      });
+
+      expect(res.statusCode).toBe(200);
+      expect(res.json()).toEqual({ scope: ['broker-a'] });
+    });
+
+    it('rejects when x-broker-id selects a broker the token does not carry (403)', async () => {
+      const validator = authorizes();
+      const sessionTokenVerifier = verifiesAs({ sub: 'key-1', brokers: ['broker-a'] });
+      app = buildTestApp({
+        validator,
+        sessionTokenVerifier,
+        routes: { 'GET /session-scoped': { permissionName: PERMISSION, acceptsSessionToken: true } },
+      });
+
+      const res = await app.inject({
+        method: 'GET',
+        url: '/session-scoped',
+        headers: { [AUTHORIZATION_HEADER]: `Bearer ${SESSION_TOKEN}`, [BROKER_ID_HEADER]: 'broker-z' },
+      });
+
+      expect(res.statusCode).toBe(403);
     });
   });
 });

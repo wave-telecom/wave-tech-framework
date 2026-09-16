@@ -4,6 +4,8 @@ export type {
   PermissionValidator,
 } from './permission-validator';
 export { WaveAuthPermissionValidator } from './wave-auth-permission-validator';
+export type { SessionTokenClaims, SessionTokenVerifier } from './session-token-verifier';
+export { WaveAuthSessionTokenVerifier } from './wave-auth-session-token-verifier';
 export { correlationHeaders } from './correlation-headers';
 
 export type { RouteProperties } from './route-properties';
@@ -13,6 +15,7 @@ export type { PermissionAuthOptions, AssertHasPermission } from './register-perm
 export {
   registerPermissionAuth,
   API_KEY_HEADER,
+  AUTHORIZATION_HEADER,
   BROKER_ID_HEADER,
   BROKER_ID_MAX_LENGTH,
   PUBLIC_PATHS,
@@ -25,4 +28,5 @@ export {
   MalformedBrokerHeaderError,
   AmbiguousBrokerTargetError,
   BrokerContextNotResolvedError,
+  SessionTokenInvalidError,
 } from './errors';
