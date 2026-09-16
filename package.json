@@ -36,6 +36,7 @@
     }
   },
   "dependencies": {
+    "@fastify/rate-limit": "^11.2.0",
     "date-fns": "^4.1.0",
     "express": "^4.21.2",
     "google-auth-library": "^9.15.1",

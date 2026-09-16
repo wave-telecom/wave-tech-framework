@@ -1,5 +1,6 @@
 import { request as httpRequest } from 'node:http';
 import Fastify, { type FastifyInstance, type FastifyReply } from 'fastify';
+import type { CreateRateLimitOptions } from '@fastify/rate-limit';
 import { describe, it, expect, afterEach } from 'vitest';
 import {
   registerPermissionAuth,
@@ -15,6 +16,7 @@ import { MalformedBrokerHeaderError } from './errors/malformed-broker-header-err
 import { AmbiguousBrokerTargetError } from './errors/ambiguous-broker-target-error';
 import { BrokerContextNotResolvedError } from './errors/broker-context-not-resolved-error';
 import { SessionTokenInvalidError } from './errors/session-token-invalid-error';
+import { TooManyRequestsError } from './errors/too-many-requests-error';
 import type {
   PermissionValidationRequest,
   PermissionValidationResult,
@@ -99,6 +101,10 @@ function testErrorHandler(error: Error, request: unknown, reply: FastifyReply): 
     reply.status(401).send({ type: 'session-token-invalid', message: error.message });
     return;
   }
+  if (error instanceof TooManyRequestsError) {
+    reply.status(429).send({ type: 'too-many-requests', message: error.message });
+    return;
+  }
   reply.status(500).send({ type: 'unexpected', message: error.message });
 }
 
@@ -108,6 +114,7 @@ interface BuildAppOptions {
   routes?: Readonly<Record<string, RouteProperties>>;
   publicPaths?: string[];
   brokerIdMaxLength?: number;
+  rateLimit?: CreateRateLimitOptions;
 }
 
 function buildTestApp(options: BuildAppOptions): FastifyInstance {
@@ -130,6 +137,7 @@ function buildTestApp(options: BuildAppOptions): FastifyInstance {
     routes,
     publicPaths: options.publicPaths,
     brokerIdMaxLength: options.brokerIdMaxLength,
+    rateLimit: options.rateLimit,
   });
 
   app.get('/', () => ({ status: 'ok' }));
@@ -710,6 +718,68 @@ describe('registerPermissionAuth', () => {
       });
 
       expect(res.statusCode).toBe(403);
+    });
+  });
+
+  describe('rate limiting (opt-in via options.rateLimit)', () => {
+    it('never answers 429 when rateLimit is not configured', async () => {
+      const validator = authorizes();
+      app = buildTestApp({ validator });
+      await app.ready();
+
+      for (let i = 0; i < 5; i += 1) {
+        const res = await app.inject({
+          method: 'POST',
+          url: '/protected',
+          headers: { [API_KEY_HEADER]: API_KEY },
+        });
+        expect(res.statusCode).toBe(200);
+      }
+    });
+
+    it('answers 429 once the configured limit is exceeded for one credential', async () => {
+      const validator = authorizes();
+      app = buildTestApp({ validator, rateLimit: { max: 2, timeWindow: '1 minute' } });
+      await app.ready();
+
+      const inject = (): Promise<{ statusCode: number }> =>
+        app.inject({ method: 'POST', url: '/protected', headers: { [API_KEY_HEADER]: API_KEY } });
+
+      expect((await inject()).statusCode).toBe(200);
+      expect((await inject()).statusCode).toBe(200);
+      expect((await inject()).statusCode).toBe(429);
+      expect(validator.calls).toHaveLength(2);
+    });
+
+    it('buckets by credential, not by IP: a different API key gets its own budget', async () => {
+      const validator = authorizes();
+      app = buildTestApp({ validator, rateLimit: { max: 1, timeWindow: '1 minute' } });
+      await app.ready();
+
+      const injectWith = (apiKey: string): Promise<{ statusCode: number }> =>
+        app.inject({ method: 'POST', url: '/protected', headers: { [API_KEY_HEADER]: apiKey } });
+
+      expect((await injectWith(API_KEY)).statusCode).toBe(200);
+      expect((await injectWith(API_KEY)).statusCode).toBe(429);
+      expect((await injectWith('a-different-api-key')).statusCode).toBe(200);
+    });
+
+    it('honours a caller-supplied keyGenerator over the credential-based default', async () => {
+      const validator = authorizes();
+      app = buildTestApp({
+        validator,
+        rateLimit: { max: 1, timeWindow: '1 minute', keyGenerator: () => 'fixed-bucket' },
+      });
+      await app.ready();
+
+      const injectWith = (apiKey: string): Promise<{ statusCode: number }> =>
+        app.inject({ method: 'POST', url: '/protected', headers: { [API_KEY_HEADER]: apiKey } });
+
+      expect((await injectWith(API_KEY)).statusCode).toBe(200);
+      // A *different* API key still lands in the same fixed bucket — the
+      // credential-based default would have given this its own budget (see
+      // the previous test), so a 429 here proves the override took effect.
+      expect((await injectWith('a-different-api-key')).statusCode).toBe(429);
     });
   });
 });

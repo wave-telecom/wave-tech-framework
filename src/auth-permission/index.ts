@@ -29,4 +29,5 @@ export {
   AmbiguousBrokerTargetError,
   BrokerContextNotResolvedError,
   SessionTokenInvalidError,
+  TooManyRequestsError,
 } from './errors';
