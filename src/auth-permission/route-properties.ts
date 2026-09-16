@@ -22,4 +22,14 @@ export interface RouteProperties {
    * ordering). Takes precedence over `singleBroker` when present.
    */
   singleBrokerWhen?: (request: FastifyRequest) => boolean;
+  /**
+   * Lets this route accept `Authorization: Bearer <sessionToken>` as an
+   * alternative to `x-api-key`. wave-auth-api's session token deliberately
+   * carries no permission grant (only `sub` and `brokers`) — a token must
+   * not carry an authorization decision that revoking the underlying key
+   * can't take back — so a route that opts in is *not* permission-checked
+   * when authenticated this way: the opt-in itself is the authorization
+   * decision, trusting only the token's broker scope. Defaults to `false`.
+   */
+  acceptsSessionToken?: boolean;
 }

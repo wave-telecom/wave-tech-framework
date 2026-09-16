@@ -20,6 +20,9 @@ importers:
       hono:
         specifier: ^4.8.5
         version: 4.8.5
+      jose:
+        specifier: ^6.2.12
+        version: 6.2.12
       mathjs:
         specifier: ^14.2.1
         version: 14.2.1
@@ -1516,6 +1519,9 @@ packages:
 
   javascript-natural-sort@0.7.1:
     resolution: {integrity: sha512-nO6jcEfZWQXDhOiBtG2KvKyEptz7RVbpGP4vTD2hLBdmNQSsCiicO2Ioinv6UI4y9ukqnBpy+XZ9H6uLNgJTlw==}
+
+  jose@6.2.12:
+    resolution: {integrity: sha512-9NiFmJEex0sy2Dk58j2UGBSHgUs2ypF9eZSu4L6vjOX3Dp96Sw1F3uL+H+D1sx02jZZdzUT0HgvCy59CuvXcWw==}
 
   js-yaml@4.1.0:
     resolution: {integrity: sha512-wpxZs9NoxZaJESJGIZTyDEaYpl0FKSA+FB9aJiyemKhMwkxQg63h4T1KJgUGHpTqPDNRcmmYLugrRjJlBtWvRA==}
@@ -3928,6 +3934,8 @@ snapshots:
   isexe@2.0.0: {}
 
   javascript-natural-sort@0.7.1: {}
+
+  jose@6.2.12: {}
 
   js-yaml@4.1.0:
     dependencies:
