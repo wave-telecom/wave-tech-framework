@@ -1,4 +1,4 @@
-import type { FastifyRequest } from 'fastify';
+import type { WaveRequest } from './shared/wave-request';
 
 /**
  * Declares what a single route (or a standalone `assertHasPermission` check)
@@ -20,8 +20,15 @@ export interface RouteProperties {
    * Same requirement as `singleBroker`, decided per request instead of
    * statically (e.g. only when a query parameter selects a broker-scoped
    * ordering). Takes precedence over `singleBroker` when present.
+   *
+   * Shared between the Fastify and Express integrations, so `request` is
+   * the minimal `WaveRequest` shape both satisfy — only `headers` and
+   * `query` are available here, never a framework-specific field like
+   * Fastify's `routeOptions`/`server` or Express's `params` (unpopulated on
+   * Express at the point this runs, so it would silently mean different
+   * things per framework).
    */
-  singleBrokerWhen?: (request: FastifyRequest) => boolean;
+  singleBrokerWhen?: (request: WaveRequest) => boolean;
   /**
    * Lets this route accept `Authorization: Bearer <sessionToken>` as an
    * alternative to `x-api-key`. wave-auth-api's session token deliberately

@@ -1,7 +1,8 @@
-import type { FastifyRequest } from 'fastify';
+import type { BrokerContext } from '../broker-context';
 import type { SessionTokenClaims, SessionTokenVerifier } from './session-token-verifier';
 import type { RouteProperties } from '../route-properties';
-import { readBrokerId, resolveBrokerContext } from '../shared/broker-scope-resolution';
+import { readBrokerId, resolveBrokerScope } from '../shared/broker-scope-resolution';
+import type { WaveRequest } from '../shared/wave-request';
 
 /**
  * The session-token counterpart to `checkApiKeyPermission`. There is no
@@ -9,16 +10,19 @@ import { readBrokerId, resolveBrokerContext } from '../shared/broker-scope-resol
  * deliberately carry no `permissions` claim — so a route only reaches this
  * path by opting in via `acceptsSessionToken`, and the token's `brokers`
  * claim (optionally narrowed by `x-broker-id`, the same as an API key's
- * scope) becomes the resolved broker context directly.
+ * scope) becomes the resolved broker scope directly.
+ *
+ * Pure — see `checkApiKeyPermission`'s doc comment on why this returns
+ * rather than mutates.
  */
 export async function authenticateWithSessionToken(
-  request: FastifyRequest,
+  request: WaveRequest,
   route: RouteProperties,
   token: string,
   verifier: SessionTokenVerifier,
   brokerIdHeader: string,
   brokerIdMaxLength: number,
-): Promise<void> {
+): Promise<BrokerContext | undefined> {
   const claims: SessionTokenClaims = await verifier.verify(token);
   const brokerId = route.brokerScoped === false
     ? undefined
@@ -26,7 +30,7 @@ export async function authenticateWithSessionToken(
   const brokers =
     brokerId === undefined ? claims.brokers : restrictToBroker(claims.brokers, brokerId);
 
-  resolveBrokerContext(
+  return resolveBrokerScope(
     request,
     route,
     brokers,

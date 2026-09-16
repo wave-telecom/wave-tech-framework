@@ -1,7 +1,7 @@
-import type { FastifyRequest } from 'fastify';
 import { countRawHeader } from './raw-headers';
+import type { WaveRequest } from './wave-request';
 
-export function readApiKey(request: FastifyRequest, apiKeyHeader: string): string | undefined {
+export function readApiKey(request: WaveRequest, apiKeyHeader: string): string | undefined {
   const header = request.headers[apiKeyHeader];
   return typeof header === 'string' && header.length > 0 ? header : undefined;
 }
@@ -15,11 +15,11 @@ export function readApiKey(request: FastifyRequest, apiKeyHeader: string): strin
  * at all.
  */
 export function readBearerToken(
-  request: FastifyRequest,
+  request: WaveRequest,
   authorizationHeader: string,
 ): string | undefined {
   const header = request.headers[authorizationHeader];
-  if (Array.isArray(header) || countRawHeader(request.raw.rawHeaders, authorizationHeader) > 1) {
+  if (Array.isArray(header) || countRawHeader(request.rawHeaders, authorizationHeader) > 1) {
     return undefined;
   }
 

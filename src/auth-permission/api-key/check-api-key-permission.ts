@@ -1,24 +1,30 @@
-import type { FastifyRequest } from 'fastify';
+import type { BrokerContext } from '../broker-context';
 import type { PermissionValidationResult, PermissionValidator } from './permission-validator';
 import { PermissionDeniedError } from '../errors/permission-denied-error';
 import type { RouteProperties } from '../route-properties';
-import { readBrokerId, resolveBrokerContext } from '../shared/broker-scope-resolution';
+import { readBrokerId, resolveBrokerScope } from '../shared/broker-scope-resolution';
+import type { WaveRequest } from '../shared/wave-request';
 
 /**
  * Authenticates and authorizes an `x-api-key` credential against
  * wave-auth-api: reads the broker id header (if any), calls `validate`, and
- * resolves `request.brokerContext`. Shared by the route-map hook and by the
+ * resolves the broker scope. Shared by the route-map hook and by the
  * standalone `assertHasPermission` it returns, so the two never drift on
  * this part of the contract.
+ *
+ * Pure — returns the resolved `BrokerContext` (or `undefined` for a
+ * `brokerScoped: false` route) rather than assigning it onto `request`;
+ * each framework-specific orchestrator does that assignment onto its own
+ * native request object.
  */
 export async function checkApiKeyPermission(
-  request: FastifyRequest,
+  request: WaveRequest,
   route: RouteProperties,
   apiKey: string,
   validator: PermissionValidator,
   brokerIdHeader: string,
   brokerIdMaxLength: number,
-): Promise<void> {
+): Promise<BrokerContext | undefined> {
   const brokerId = route.brokerScoped === false
     ? undefined
     : readBrokerId(request, brokerIdHeader, brokerIdMaxLength);
@@ -35,7 +41,7 @@ export async function checkApiKeyPermission(
     throw new PermissionDeniedError(`The API key does not have the ${route.permissionName} permission`);
   }
 
-  resolveBrokerContext(
+  return resolveBrokerScope(
     request,
     route,
     result.brokers,
