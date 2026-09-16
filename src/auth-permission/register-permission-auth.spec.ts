@@ -148,6 +148,7 @@ function buildTestApp(options: BuildAppOptions): FastifyInstance {
     scope: requireBrokerContext(request).scope,
   }));
   app.get('/session-scoped', (request) => ({ scope: requireBrokerContext(request).scope }));
+  app.get('/tenant-wide', (request) => ({ hasBrokerContext: request.brokerContext !== undefined }));
   // Registered with Fastify but deliberately absent from `routes` above.
   app.get('/registered-but-unmapped', () => ({ ok: true }));
   // A path the global hook treats as public (via publicPaths), whose own
@@ -718,6 +719,83 @@ describe('registerPermissionAuth', () => {
       });
 
       expect(res.statusCode).toBe(403);
+    });
+  });
+
+  describe('brokerScoped: false — a route not scoped to any particular broker', () => {
+    it('allows an API key with an empty broker scope, and sets no broker context', async () => {
+      const validator = authorizes([]);
+      app = buildTestApp({
+        validator,
+        routes: { 'GET /tenant-wide': { permissionName: PERMISSION, brokerScoped: false } },
+      });
+
+      const res = await app.inject({
+        method: 'GET',
+        url: '/tenant-wide',
+        headers: { [API_KEY_HEADER]: API_KEY },
+      });
+
+      expect(res.statusCode).toBe(200);
+      expect(res.json()).toEqual({ hasBrokerContext: false });
+    });
+
+    it('ignores x-broker-id entirely for an API key, even if malformed', async () => {
+      const validator = authorizes(['broker-a', 'broker-b']);
+      app = buildTestApp({
+        validator,
+        routes: { 'GET /tenant-wide': { permissionName: PERMISSION, brokerScoped: false } },
+      });
+
+      const res = await app.inject({
+        method: 'GET',
+        url: '/tenant-wide',
+        headers: { [API_KEY_HEADER]: API_KEY, [BROKER_ID_HEADER]: '' },
+      });
+
+      expect(res.statusCode).toBe(200);
+      expect(Object.keys(validator.calls[0])).not.toContain('brokers');
+    });
+
+    it('allows a session token with an empty broker scope, and sets no broker context', async () => {
+      const validator = authorizes();
+      const sessionTokenVerifier = verifiesAs({ sub: 'key-1', brokers: [] });
+      app = buildTestApp({
+        validator,
+        sessionTokenVerifier,
+        routes: {
+          'GET /tenant-wide': { permissionName: PERMISSION, acceptsSessionToken: true, brokerScoped: false },
+        },
+      });
+
+      const res = await app.inject({
+        method: 'GET',
+        url: '/tenant-wide',
+        headers: { [AUTHORIZATION_HEADER]: `Bearer ${SESSION_TOKEN}` },
+      });
+
+      expect(res.statusCode).toBe(200);
+      expect(res.json()).toEqual({ hasBrokerContext: false });
+    });
+
+    it('ignores x-broker-id entirely for a session token, even if malformed', async () => {
+      const validator = authorizes();
+      const sessionTokenVerifier = verifiesAs({ sub: 'key-1', brokers: ['broker-a'] });
+      app = buildTestApp({
+        validator,
+        sessionTokenVerifier,
+        routes: {
+          'GET /tenant-wide': { permissionName: PERMISSION, acceptsSessionToken: true, brokerScoped: false },
+        },
+      });
+
+      const res = await app.inject({
+        method: 'GET',
+        url: '/tenant-wide',
+        headers: { [AUTHORIZATION_HEADER]: `Bearer ${SESSION_TOKEN}`, [BROKER_ID_HEADER]: '' },
+      });
+
+      expect(res.statusCode).toBe(200);
     });
   });
 

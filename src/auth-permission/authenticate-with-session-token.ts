@@ -20,7 +20,9 @@ export async function authenticateWithSessionToken(
   brokerIdMaxLength: number,
 ): Promise<void> {
   const claims: SessionTokenClaims = await verifier.verify(token);
-  const brokerId = readBrokerId(request, brokerIdHeader, brokerIdMaxLength);
+  const brokerId = route.brokerScoped === false
+    ? undefined
+    : readBrokerId(request, brokerIdHeader, brokerIdMaxLength);
   const brokers =
     brokerId === undefined ? claims.brokers : restrictToBroker(claims.brokers, brokerId);
 

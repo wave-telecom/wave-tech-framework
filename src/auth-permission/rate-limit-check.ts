@@ -29,7 +29,10 @@ export function createRateLimitCheck(
   let checkRateLimit: ReturnType<FastifyInstance['createRateLimit']> | undefined;
 
   return async (request) => {
-    checkRateLimit ??= app.createRateLimit(options);
+    if (checkRateLimit === undefined) {
+      checkRateLimit = app.createRateLimit(options);
+    }
+
     const verdict = await checkRateLimit(request);
     if (!verdict.isAllowed && verdict.isExceeded) {
       throw new TooManyRequestsError('Rate limit exceeded for this credential');
