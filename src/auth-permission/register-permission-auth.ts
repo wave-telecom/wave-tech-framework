@@ -1,12 +1,15 @@
 import type { FastifyInstance, FastifyRequest } from 'fastify';
+import fastifyRateLimit, { type CreateRateLimitOptions } from '@fastify/rate-limit';
 import type { PermissionValidator } from './permission-validator';
 import type { SessionTokenVerifier } from './session-token-verifier';
 import { PermissionValidatorUnauthorizedError } from './errors/permission-validator-unauthorized-error';
 import { PermissionDeniedError } from './errors/permission-denied-error';
 import type { RouteProperties } from './route-properties';
-import { countRawHeader } from './raw-headers';
 import { checkApiKeyPermission } from './check-api-key-permission';
 import { authenticateWithSessionToken } from './authenticate-with-session-token';
+import { readApiKey, readBearerToken } from './read-credentials';
+import { credentialRateLimitKey } from './rate-limit-key';
+import { createRateLimitCheck } from './rate-limit-check';
 
 /** Header clients must send carrying their API key. */
 export const API_KEY_HEADER = 'x-api-key';
@@ -31,6 +34,22 @@ export interface PermissionAuthOptions {
   authorizationHeader?: string;
   brokerIdHeader?: string;
   brokerIdMaxLength?: number;
+  /**
+   * Opts every route this hook protects into rate limiting (backed by
+   * `@fastify/rate-limit`'s `createRateLimit`, see `rate-limit-check.ts`),
+   * bucketed by the presented credential rather than `request.ip` by
+   * default (see `credentialRateLimitKey`) — pass a `keyGenerator` to
+   * override that. A request over budget throws `TooManyRequestsError`
+   * (`429`). Omitted entirely by default: this hook runs inside a shared
+   * framework used by many independently deployed services with very
+   * different traffic profiles, so there's no default this module could
+   * pick that would fit all of them. Many Wave services already
+   * rate-limit at the infrastructure/gateway layer instead (e.g.
+   * wave-auth-api's own Cloud Armor config) and don't need this at all.
+   * Only applies to the route-map hook itself, not to `assertHasPermission`
+   * used standalone outside the route map.
+   */
+  rateLimit?: CreateRateLimitOptions;
 }
 
 /** Checks a single `RouteProperties` requirement for an already-authenticated request. */
@@ -56,63 +75,40 @@ function findRoute(
   return routes[routeKey];
 }
 
-function readApiKey(request: FastifyRequest, apiKeyHeader: string): string | undefined {
-  const header = request.headers[apiKeyHeader];
-  return typeof header === 'string' && header.length > 0 ? header : undefined;
-}
-
-/**
- * Reads the session token out of `Authorization: Bearer <token>`. Anything
- * that doesn't conform — a repeated header, a different scheme, an empty
- * token — resolves as `undefined`, the same as the header being absent
- * entirely: this is a credential lookup, not validation, and a caller with a
- * malformed header must not be told anything more than one with no header
- * at all.
- */
-function readBearerToken(request: FastifyRequest, authorizationHeader: string): string | undefined {
-  const header = request.headers[authorizationHeader];
-  if (Array.isArray(header) || countRawHeader(request.raw.rawHeaders, authorizationHeader) > 1) {
-    return undefined;
-  }
-
-  const match = typeof header === 'string' ? /^Bearer (.+)$/i.exec(header) : null;
-  return match?.[1];
-}
-
 /**
  * Registers an `onRequest` hook that authenticates and authorizes every
  * request against wave-auth-api, and returns the same check bound to
  * `validator` for use outside the route map (e.g. a vendor webhook whose
  * permission isn't one of this app's own routes).
  *
- * Deliberately does no rate limiting of its own: this hook runs inside a
- * shared framework used by many independently deployed services, each with
- * its own traffic profile, so a one-size-fits-all limit here would be either
- * too strict for some or meaningless for others. Rate limiting is expected
- * at the infrastructure/gateway layer per consuming service — the same
- * layer wave-auth-api itself relies on (Cloud Armor, configured in its own
- * IaC), not inside application code.
+ * Rate limiting is opt-in via `options.rateLimit` (see its doc comment) —
+ * omitted by default, since this hook runs inside a shared framework with no
+ * single traffic profile that would fit every consuming service.
  *
  * The order of checks is contractual, not stylistic:
  *
  * 1. public path -> passes without touching the network;
- * 2. neither `x-api-key` nor a valid `Authorization: Bearer` present ->
+ * 2. rate limit exceeded for the presented credential (or IP, absent one)
+ *    -> `429`, before any credential is even read for real, so a flood of
+ *    guesses gets throttled before it can reach `validate()` or a token
+ *    verification;
+ * 3. neither `x-api-key` nor a valid `Authorization: Bearer` present ->
  *    `401`, even before routing decides, so a caller with no credential
  *    can't tell an existing route from a nonexistent one by omitting it;
- * 3. path didn't match any route Fastify knows about -> returns without
+ * 4. path didn't match any route Fastify knows about -> returns without
  *    throwing, letting Fastify's own 404 handling take over;
- * 4. route matched but has no entry in `routes` -> `403` (deny by
+ * 5. route matched but has no entry in `routes` -> `403` (deny by
  *    default), without ever reaching the network;
- * 5. `x-api-key` present -> the existing validate-against-wave-auth-api
+ * 6. `x-api-key` present -> the existing validate-against-wave-auth-api
  *    path, unconditionally, regardless of `acceptsSessionToken`;
- * 6. otherwise only a bearer token was presented -> `401` unless the route
+ * 7. otherwise only a bearer token was presented -> `401` unless the route
  *    set `acceptsSessionToken: true`, in which case the token is verified
  *    offline instead and never reaches `validate()` — see
  *    `authenticateWithSessionToken`;
- * 7. broker id header malformed -> `400`, also without reaching the
+ * 8. broker id header malformed -> `400`, also without reaching the
  *    network;
- * 8. denied verdict or empty scope -> `403`;
- * 9. scope spans more than one broker on a route that requires exactly
+ * 9. denied verdict or empty scope -> `403`;
+ * 10. scope spans more than one broker on a route that requires exactly
  *    one -> `400`. This one comes *after* the verdict because only the
  *    verdict (or the token's claims) reveals how many brokers the scope
  *    actually has.
@@ -133,6 +129,21 @@ export function registerPermissionAuth(
         `${routeKey} sets acceptsSessionToken but registerPermissionAuth was not given a sessionTokenVerifier`,
       );
     }
+  }
+
+  // `global: false`: this hook does its own per-request check via
+  // `createRateLimit` (see rate-limit-check.ts) instead of the plugin's
+  // automatic per-route wiring, which doesn't reach routes a caller
+  // registers right after this synchronous function returns.
+  const checkRateLimit =
+    options.rateLimit === undefined
+      ? undefined
+      : createRateLimitCheck(app, {
+          keyGenerator: credentialRateLimitKey(apiKeyHeader, authorizationHeader),
+          ...options.rateLimit,
+        });
+  if (checkRateLimit !== undefined) {
+    void app.register(fastifyRateLimit, { global: false });
   }
 
   const assertHasPermission: AssertHasPermission = async (request, route) => {
@@ -177,6 +188,10 @@ export function registerPermissionAuth(
     const routeUrl = request.routeOptions.url;
     if (isPublicPath(routeUrl ?? request.url, publicPaths)) {
       return;
+    }
+
+    if (checkRateLimit !== undefined) {
+      await checkRateLimit(request);
     }
 
     const hasCredential =
