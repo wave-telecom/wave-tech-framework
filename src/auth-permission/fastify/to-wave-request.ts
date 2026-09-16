@@ -1,6 +1,6 @@
 import type { FastifyRequest } from 'fastify';
-import type { BrokerContext } from './broker-context';
-import type { WaveRequest } from './shared/wave-request';
+import type { BrokerContext } from '../broker-context';
+import type { WaveRequest } from '../shared/wave-request';
 
 declare module 'fastify' {
   interface FastifyRequest {

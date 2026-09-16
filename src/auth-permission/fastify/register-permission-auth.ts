@@ -1,17 +1,17 @@
 import type { FastifyInstance, FastifyRequest } from 'fastify';
 import fastifyRateLimit, { type CreateRateLimitOptions } from '@fastify/rate-limit';
-import type { PermissionValidator } from './api-key/permission-validator';
-import type { SessionTokenVerifier } from './session-token/session-token-verifier';
-import { PermissionValidatorUnauthorizedError } from './errors/permission-validator-unauthorized-error';
-import { PermissionDeniedError } from './errors/permission-denied-error';
-import type { RouteProperties } from './route-properties';
-import { checkApiKeyPermission } from './api-key/check-api-key-permission';
-import { authenticateWithSessionToken } from './session-token/authenticate-with-session-token';
-import { readApiKey, readBearerToken } from './shared/read-credentials';
+import type { PermissionValidator } from '../api-key/permission-validator';
+import type { SessionTokenVerifier } from '../session-token/session-token-verifier';
+import { PermissionValidatorUnauthorizedError } from '../errors/permission-validator-unauthorized-error';
+import { PermissionDeniedError } from '../errors/permission-denied-error';
+import type { RouteProperties } from '../route-properties';
+import { checkApiKeyPermission } from '../api-key/check-api-key-permission';
+import { authenticateWithSessionToken } from '../session-token/authenticate-with-session-token';
+import { readApiKey, readBearerToken } from '../shared/read-credentials';
 import { credentialRateLimitKey } from './rate-limit/rate-limit-key';
 import { createRateLimitCheck } from './rate-limit/rate-limit-check';
 import { toWaveRequest } from './to-wave-request';
-import { isPublicPath } from './shared/is-public-path';
+import { isPublicPath } from '../shared/is-public-path';
 
 /** Header clients must send carrying their API key. */
 export const API_KEY_HEADER = 'x-api-key';
