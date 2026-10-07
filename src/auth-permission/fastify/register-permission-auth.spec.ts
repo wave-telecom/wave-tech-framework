@@ -353,6 +353,67 @@ describe('registerPermissionAuth', () => {
       expect(validator.calls).toHaveLength(1);
     });
 
+    it('moves on to the next key when one resolves an ambiguous broker scope', async () => {
+      const validator = new FakePermissionValidator((request) => ({
+        authorized: true,
+        brokers: request.apiKey === API_KEY ? ['tim'] : ['tim', 'other-broker'],
+      }));
+      app = buildTestApp({ validator, apiKeyHeader: ['x-api-key', 'authorization'] });
+
+      const res = await app.inject({
+        method: 'POST',
+        url: '/protected',
+        headers: { [API_KEY_HEADER]: 'multi-broker-key', authorization: API_KEY },
+      });
+
+      expect(res.statusCode).toBe(200);
+      expect(validator.calls).toHaveLength(2);
+    });
+
+    it('reports a denied permission (403) over an unknown key (401) when every key fails', async () => {
+      const validator = new FakePermissionValidator((request) =>
+        request.apiKey === API_KEY
+          ? { authorized: false, brokers: [] }
+          : new PermissionValidatorUnauthorizedError(),
+      );
+      app = buildTestApp({ validator, apiKeyHeader: ['x-api-key', 'authorization'] });
+
+      const res = await app.inject({
+        method: 'POST',
+        url: '/protected',
+        headers: { [API_KEY_HEADER]: 'unknown-key', authorization: API_KEY },
+      });
+
+      expect(res.statusCode).toBe(403);
+    });
+
+    it('validates a key repeated across headers only once', async () => {
+      const validator = authorizes();
+      app = buildTestApp({ validator, apiKeyHeader: ['x-api-key', 'authorization'] });
+
+      await app.inject({
+        method: 'POST',
+        url: '/protected',
+        headers: { [API_KEY_HEADER]: API_KEY, authorization: API_KEY },
+      });
+
+      expect(validator.calls).toHaveLength(1);
+    });
+
+    it('rejects a malformed x-broker-id (400) without validating any key', async () => {
+      const validator = authorizes();
+      app = buildTestApp({ validator, apiKeyHeader: ['x-api-key', 'authorization'] });
+
+      const res = await app.inject({
+        method: 'POST',
+        url: '/protected',
+        headers: { [API_KEY_HEADER]: API_KEY, authorization: 'another-key', [BROKER_ID_HEADER]: '' },
+      });
+
+      expect(res.statusCode).toBe(400);
+      expect(validator.calls).toHaveLength(0);
+    });
+
     it('rejects a header outside the configured list (401)', async () => {
       const validator = authorizes();
       app = buildTestApp({ validator, apiKeyHeader: 'Authorization' });
@@ -995,6 +1056,26 @@ describe('registerPermissionAuth', () => {
       expect((await injectWith(API_KEY)).statusCode).toBe(200);
       expect((await injectWith(API_KEY)).statusCode).toBe(429);
       expect((await injectWith('a-different-api-key')).statusCode).toBe(200);
+    });
+
+    it('checks the budget of every presented key, so a random extra key cannot dodge it', async () => {
+      const validator = authorizes();
+      app = buildTestApp({
+        validator,
+        apiKeyHeader: ['x-api-key', 'authorization'],
+        rateLimit: { max: 1, timeWindow: '1 minute' },
+      });
+      await app.ready();
+
+      const injectWith = (decoy: string): Promise<{ statusCode: number }> =>
+        app.inject({
+          method: 'POST',
+          url: '/protected',
+          headers: { [API_KEY_HEADER]: decoy, authorization: API_KEY },
+        });
+
+      expect((await injectWith('decoy-1')).statusCode).toBe(200);
+      expect((await injectWith('decoy-2')).statusCode).toBe(429);
     });
 
     it('honours a caller-supplied keyGenerator over the credential-based default', async () => {

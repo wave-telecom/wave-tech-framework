@@ -25,17 +25,34 @@ export type RateLimitCheck = (request: FastifyRequest) => Promise<void>;
 export function createRateLimitCheck(
   app: FastifyInstance,
   options: CreateRateLimitOptions,
+  credentialKeys: (request: FastifyRequest) => readonly string[],
 ): RateLimitCheck {
+  const currentKey = new WeakMap<FastifyRequest, string>();
   let checkRateLimit: ReturnType<FastifyInstance['createRateLimit']> | undefined;
 
-  return async (request) => {
+  const checkKey = async (request: FastifyRequest): Promise<void> => {
     if (checkRateLimit === undefined) {
-      checkRateLimit = app.createRateLimit(options);
+      checkRateLimit = app.createRateLimit({
+        keyGenerator: (keyed) => currentKey.get(keyed) ?? keyed.ip,
+        ...options,
+      });
     }
 
     const verdict = await checkRateLimit(request);
     if (!verdict.isAllowed && verdict.isExceeded) {
       throw new TooManyRequestsError('Rate limit exceeded for this credential');
+    }
+  };
+
+  return async (request) => {
+    if (options.keyGenerator !== undefined) {
+      await checkKey(request);
+      return;
+    }
+
+    for (const key of credentialKeys(request)) {
+      currentKey.set(request, key);
+      await checkKey(request);
     }
   };
 }
