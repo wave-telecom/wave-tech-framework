@@ -115,6 +115,7 @@ interface BuildAppOptions {
   publicPaths?: string[];
   brokerIdMaxLength?: number;
   rateLimit?: CreateRateLimitOptions;
+  apiKeyHeader?: string | readonly string[];
 }
 
 function buildTestApp(options: BuildAppOptions): FastifyInstance {
@@ -138,6 +139,7 @@ function buildTestApp(options: BuildAppOptions): FastifyInstance {
     publicPaths: options.publicPaths,
     brokerIdMaxLength: options.brokerIdMaxLength,
     rateLimit: options.rateLimit,
+    apiKeyHeader: options.apiKeyHeader,
   });
 
   app.get('/', () => ({ status: 'ok' }));
@@ -268,6 +270,76 @@ describe('registerPermissionAuth', () => {
       });
 
       expect(res.statusCode).toBe(503);
+    });
+  });
+
+  describe('apiKeyHeader', () => {
+    it('reads the key from any header in a list, case-insensitively', async () => {
+      const validator = authorizes();
+      app = buildTestApp({ validator, apiKeyHeader: ['x-api-key', 'Authorization'] });
+
+      const viaAuthorization = await app.inject({
+        method: 'POST',
+        url: '/protected',
+        headers: { authorization: API_KEY },
+      });
+      const viaApiKey = await app.inject({
+        method: 'POST',
+        url: '/protected',
+        headers: { [API_KEY_HEADER]: API_KEY },
+      });
+
+      expect(viaAuthorization.statusCode).toBe(200);
+      expect(viaApiKey.statusCode).toBe(200);
+      expect(validator.calls.map((call) => call.apiKey)).toEqual([API_KEY, API_KEY]);
+    });
+
+    it('prefers the earliest header in the list when several are present', async () => {
+      const validator = authorizes();
+      app = buildTestApp({ validator, apiKeyHeader: ['authorization', 'x-api-key'] });
+
+      await app.inject({
+        method: 'POST',
+        url: '/protected',
+        headers: { authorization: API_KEY, [API_KEY_HEADER]: 'other-key' },
+      });
+
+      expect(validator.calls.map((call) => call.apiKey)).toEqual([API_KEY]);
+    });
+
+    it('rejects a header outside the configured list (401)', async () => {
+      const validator = authorizes();
+      app = buildTestApp({ validator, apiKeyHeader: 'Authorization' });
+
+      const res = await app.inject({
+        method: 'POST',
+        url: '/protected',
+        headers: { [API_KEY_HEADER]: API_KEY },
+      });
+
+      expect(res.statusCode).toBe(401);
+      expect(validator.calls).toHaveLength(0);
+    });
+
+    it('throws synchronously on an empty list', () => {
+      app = Fastify({ logger: false });
+
+      expect(() =>
+        registerPermissionAuth(app, { validator: authorizes(), routes: {}, apiKeyHeader: [] }),
+      ).toThrow(/empty apiKeyHeader/);
+    });
+
+    it('throws synchronously when the authorization header is an API key header and a route accepts session tokens', () => {
+      app = Fastify({ logger: false });
+
+      expect(() =>
+        registerPermissionAuth(app, {
+          validator: authorizes(),
+          sessionTokenVerifier: verifiesAs({ sub: 'key-1', brokers: ['tim'] }),
+          routes: { 'GET /session-scoped': { permissionName: PERMISSION, acceptsSessionToken: true } },
+          apiKeyHeader: ['x-api-key', 'Authorization'],
+        }),
+      ).toThrow(/acceptsSessionToken/);
     });
   });
 
@@ -537,6 +609,26 @@ describe('registerPermissionAuth', () => {
   });
 
   describe('assertHasPermission returned by registerPermissionAuth', () => {
+    it('reads the key from the configured apiKeyHeader list', async () => {
+      const validator = authorizes(['tim']);
+      app = buildTestApp({
+        validator,
+        publicPaths: ['/', '/management/health', '/webhook'],
+        apiKeyHeader: ['x-api-key', 'Authorization'],
+      });
+
+      const res = await app.inject({
+        method: 'POST',
+        url: '/webhook',
+        headers: { authorization: API_KEY },
+      });
+
+      expect(res.statusCode).toBe(200);
+      expect(validator.calls).toEqual([
+        { apiKey: API_KEY, permission: 'toutbox.delivery_order.webhook' },
+      ]);
+    });
+
     it('authenticates and authorizes a permission outside the route map', async () => {
       const validator = authorizes(['tim']);
       app = buildTestApp({ validator, publicPaths: ['/', '/management/health', '/webhook'] });
@@ -836,6 +928,23 @@ describe('registerPermissionAuth', () => {
 
       const injectWith = (apiKey: string): Promise<{ statusCode: number }> =>
         app.inject({ method: 'POST', url: '/protected', headers: { [API_KEY_HEADER]: apiKey } });
+
+      expect((await injectWith(API_KEY)).statusCode).toBe(200);
+      expect((await injectWith(API_KEY)).statusCode).toBe(429);
+      expect((await injectWith('a-different-api-key')).statusCode).toBe(200);
+    });
+
+    it('buckets by a key read from any configured apiKeyHeader', async () => {
+      const validator = authorizes();
+      app = buildTestApp({
+        validator,
+        apiKeyHeader: ['x-api-key', 'authorization'],
+        rateLimit: { max: 1, timeWindow: '1 minute' },
+      });
+      await app.ready();
+
+      const injectWith = (apiKey: string): Promise<{ statusCode: number }> =>
+        app.inject({ method: 'POST', url: '/protected', headers: { authorization: apiKey } });
 
       expect((await injectWith(API_KEY)).statusCode).toBe(200);
       expect((await injectWith(API_KEY)).statusCode).toBe(429);

@@ -7,6 +7,7 @@ import { PermissionDeniedError } from '../errors/permission-denied-error';
 import type { RouteProperties } from '../route-properties';
 import { checkApiKeyPermission } from '../api-key/check-api-key-permission';
 import { authenticateWithSessionToken } from '../session-token/authenticate-with-session-token';
+import { resolveApiKeyHeaders } from '../shared/api-key-headers';
 import { readApiKey, readBearerToken } from '../shared/read-credentials';
 import { credentialRateLimitKey } from './rate-limit/rate-limit-key';
 import { createRateLimitCheck } from './rate-limit/rate-limit-check';
@@ -30,7 +31,12 @@ export interface PermissionAuthOptions {
   routes: Readonly<Record<string, RouteProperties>>;
   /** Paths that bypass authentication, matched by exact value or as a prefix. */
   publicPaths?: string[];
-  apiKeyHeader?: string;
+  /**
+   * Header(s) the API key is read from, case-insensitively. With a list, the
+   * first one present wins. May only include `authorizationHeader` when no
+   * route sets `acceptsSessionToken`.
+   */
+  apiKeyHeader?: string | readonly string[];
   /** Required when any route in `routes` sets `acceptsSessionToken: true`. */
   sessionTokenVerifier?: SessionTokenVerifier;
   authorizationHeader?: string;
@@ -116,7 +122,6 @@ export function registerPermissionAuth(
   options: PermissionAuthOptions,
 ): AssertHasPermission {
   const publicPaths = options.publicPaths ?? PUBLIC_PATHS;
-  const apiKeyHeader = options.apiKeyHeader ?? API_KEY_HEADER;
   const authorizationHeader = options.authorizationHeader ?? AUTHORIZATION_HEADER;
   const brokerIdHeader = options.brokerIdHeader ?? BROKER_ID_HEADER;
   const brokerIdMaxLength = options.brokerIdMaxLength ?? BROKER_ID_MAX_LENGTH;
@@ -129,6 +134,13 @@ export function registerPermissionAuth(
     }
   }
 
+  const apiKeyHeaders = resolveApiKeyHeaders(
+    options.apiKeyHeader ?? API_KEY_HEADER,
+    authorizationHeader,
+    options.routes,
+    'registerPermissionAuth',
+  );
+
   // `global: false`: this hook does its own per-request check via
   // `createRateLimit` (see rate-limit-check.ts) instead of the plugin's
   // automatic per-route wiring, which doesn't reach routes a caller
@@ -137,7 +149,7 @@ export function registerPermissionAuth(
     options.rateLimit === undefined
       ? undefined
       : createRateLimitCheck(app, {
-          keyGenerator: credentialRateLimitKey(apiKeyHeader, authorizationHeader),
+          keyGenerator: credentialRateLimitKey(apiKeyHeaders, authorizationHeader),
           ...options.rateLimit,
         });
   if (checkRateLimit !== undefined) {
@@ -146,7 +158,7 @@ export function registerPermissionAuth(
 
   const assertHasPermission: AssertHasPermission = async (request, route) => {
     const waveRequest = toWaveRequest(request);
-    const apiKey = readApiKey(waveRequest, apiKeyHeader);
+    const apiKey = readApiKey(waveRequest, apiKeyHeaders);
     if (apiKey !== undefined) {
       const ctx = await checkApiKeyPermission(
         waveRequest,
@@ -201,7 +213,7 @@ export function registerPermissionAuth(
 
     const waveRequest = toWaveRequest(request);
     const hasCredential =
-      readApiKey(waveRequest, apiKeyHeader) !== undefined ||
+      readApiKey(waveRequest, apiKeyHeaders) !== undefined ||
       readBearerToken(waveRequest, authorizationHeader) !== undefined;
     if (!hasCredential) {
       throw new PermissionValidatorUnauthorizedError();

@@ -12,13 +12,13 @@ import { toWaveRequest } from '../to-wave-request';
  * (still useful to cap unauthenticated request floods).
  */
 export function credentialRateLimitKey(
-  apiKeyHeader: string,
+  apiKeyHeaders: readonly string[],
   authorizationHeader: string,
 ): (request: FastifyRequest) => string {
   return (request) => {
     const waveRequest = toWaveRequest(request);
     return (
-      readApiKey(waveRequest, apiKeyHeader) ??
+      readApiKey(waveRequest, apiKeyHeaders) ??
       readBearerToken(waveRequest, authorizationHeader) ??
       request.ip
     );

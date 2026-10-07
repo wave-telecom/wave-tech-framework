@@ -85,6 +85,7 @@ interface BuildAppOptions {
   sessionTokenVerifier?: SessionTokenVerifier;
   routes: Readonly<Record<string, RouteProperties>>;
   publicPaths?: string[];
+  apiKeyHeader?: string | readonly string[];
 }
 
 function buildTestApp(options: BuildAppOptions): Express {
@@ -95,6 +96,7 @@ function buildTestApp(options: BuildAppOptions): Express {
     sessionTokenVerifier: options.sessionTokenVerifier,
     routes: options.routes,
     publicPaths: options.publicPaths,
+    apiKeyHeader: options.apiKeyHeader,
   });
 
   app.use(middleware);
@@ -170,6 +172,59 @@ describe('expressRegisterPermissionAuth', () => {
       const res = await inject(listening.baseUrl, '/public');
 
       expect(res.statusCode).toBe(401);
+    });
+  });
+
+  describe('apiKeyHeader', () => {
+    it('reads the key from any header in a list, case-insensitively', async () => {
+      const validator = authorizes(['tim']);
+      const app = buildTestApp({
+        validator,
+        routes: { 'GET /balances': { permissionName: PERMISSION } },
+        apiKeyHeader: ['x-api-key', 'Authorization'],
+      });
+      const listening = await listen(app);
+      server = listening.server;
+
+      const viaAuthorization = await inject(listening.baseUrl, '/balances', { authorization: API_KEY });
+      const viaApiKey = await inject(listening.baseUrl, '/balances', { [API_KEY_HEADER]: API_KEY });
+
+      expect(viaAuthorization.statusCode).toBe(200);
+      expect(viaApiKey.statusCode).toBe(200);
+      expect(validator.calls.map((call) => call.apiKey)).toEqual([API_KEY, API_KEY]);
+    });
+
+    it('rejects a header outside the configured list (401)', async () => {
+      const validator = authorizes();
+      const app = buildTestApp({
+        validator,
+        routes: { 'GET /balances': { permissionName: PERMISSION } },
+        apiKeyHeader: 'authorization',
+      });
+      const listening = await listen(app);
+      server = listening.server;
+
+      const res = await inject(listening.baseUrl, '/balances', { [API_KEY_HEADER]: API_KEY });
+
+      expect(res.statusCode).toBe(401);
+      expect(validator.calls).toHaveLength(0);
+    });
+
+    it('throws synchronously when the authorization header is an API key header and a route accepts session tokens', () => {
+      expect(() =>
+        expressRegisterPermissionAuth({
+          validator: authorizes(),
+          sessionTokenVerifier: verifiesAs({ sub: 'key-1', brokers: ['tim'] }),
+          routes: { 'GET /session-scoped': { permissionName: PERMISSION, acceptsSessionToken: true } },
+          apiKeyHeader: [API_KEY_HEADER, 'Authorization'],
+        }),
+      ).toThrow(/acceptsSessionToken/);
+    });
+
+    it('throws synchronously on an empty list', () => {
+      expect(() =>
+        expressRegisterPermissionAuth({ validator: authorizes(), routes: {}, apiKeyHeader: [] }),
+      ).toThrow(/empty apiKeyHeader/);
     });
   });
 

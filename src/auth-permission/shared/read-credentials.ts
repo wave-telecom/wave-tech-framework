@@ -1,9 +1,17 @@
 import { countRawHeader } from './raw-headers';
 import type { WaveRequest } from './wave-request';
 
-export function readApiKey(request: WaveRequest, apiKeyHeader: string): string | undefined {
-  const header = request.headers[apiKeyHeader];
-  return typeof header === 'string' && header.length > 0 ? header : undefined;
+export function readApiKey(
+  request: WaveRequest,
+  apiKeyHeaders: readonly string[],
+): string | undefined {
+  for (const apiKeyHeader of apiKeyHeaders) {
+    const header = request.headers[apiKeyHeader];
+    if (typeof header === 'string' && header.length > 0) {
+      return header;
+    }
+  }
+  return undefined;
 }
 
 /**
