@@ -1,6 +1,7 @@
 import type { BrokerContext } from '../broker-context';
 import type { PermissionValidationResult, PermissionValidator } from './permission-validator';
 import { PermissionDeniedError } from '../errors/permission-denied-error';
+import { PermissionValidatorUnauthorizedError } from '../errors/permission-validator-unauthorized-error';
 import type { RouteProperties } from '../route-properties';
 import { readBrokerId, resolveBrokerScope } from '../shared/broker-scope-resolution';
 import type { WaveRequest } from '../shared/wave-request';
@@ -47,4 +48,44 @@ export async function checkApiKeyPermission(
     result.brokers,
     `The API key does not have the ${route.permissionName} permission`,
   );
+}
+
+/**
+ * Tries each presented API key in order and resolves with the first one that
+ * passes. Only a rejection of the key itself moves on to the next one; any
+ * other failure (validator unavailable, malformed broker header) is thrown
+ * immediately. When every key is rejected, the first rejection is thrown.
+ */
+export async function checkAnyApiKeyPermission(
+  request: WaveRequest,
+  route: RouteProperties,
+  apiKeys: readonly string[],
+  validator: PermissionValidator,
+  brokerIdHeader: string,
+  brokerIdMaxLength: number,
+): Promise<BrokerContext | undefined> {
+  let firstRejection: Error = new PermissionValidatorUnauthorizedError();
+  for (const [index, apiKey] of apiKeys.entries()) {
+    try {
+      return await checkApiKeyPermission(
+        request,
+        route,
+        apiKey,
+        validator,
+        brokerIdHeader,
+        brokerIdMaxLength,
+      );
+    } catch (error) {
+      const isKeyRejection =
+        error instanceof PermissionValidatorUnauthorizedError ||
+        error instanceof PermissionDeniedError;
+      if (!isKeyRejection) {
+        throw error;
+      }
+      if (index === 0) {
+        firstRejection = error;
+      }
+    }
+  }
+  throw firstRejection;
 }

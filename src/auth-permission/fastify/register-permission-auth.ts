@@ -5,10 +5,10 @@ import type { SessionTokenVerifier } from '../session-token/session-token-verifi
 import { PermissionValidatorUnauthorizedError } from '../errors/permission-validator-unauthorized-error';
 import { PermissionDeniedError } from '../errors/permission-denied-error';
 import type { RouteProperties } from '../route-properties';
-import { checkApiKeyPermission } from '../api-key/check-api-key-permission';
+import { checkAnyApiKeyPermission } from '../api-key/check-api-key-permission';
 import { authenticateWithSessionToken } from '../session-token/authenticate-with-session-token';
 import { resolveApiKeyHeaders } from '../shared/api-key-headers';
-import { readApiKey, readBearerToken } from '../shared/read-credentials';
+import { readApiKeys, readBearerToken } from '../shared/read-credentials';
 import { credentialRateLimitKey } from './rate-limit/rate-limit-key';
 import { createRateLimitCheck } from './rate-limit/rate-limit-check';
 import { toWaveRequest } from './to-wave-request';
@@ -33,8 +33,8 @@ export interface PermissionAuthOptions {
   publicPaths?: string[];
   /**
    * Header(s) the API key is read from, case-insensitively. With a list, the
-   * first one present wins. May only include `authorizationHeader` when no
-   * route sets `acceptsSessionToken`.
+   * request passes if any key presented is valid. May only include
+   * `authorizationHeader` when no route sets `acceptsSessionToken`.
    */
   apiKeyHeader?: string | readonly string[];
   /** Required when any route in `routes` sets `acceptsSessionToken: true`. */
@@ -158,12 +158,12 @@ export function registerPermissionAuth(
 
   const assertHasPermission: AssertHasPermission = async (request, route) => {
     const waveRequest = toWaveRequest(request);
-    const apiKey = readApiKey(waveRequest, apiKeyHeaders);
-    if (apiKey !== undefined) {
-      const ctx = await checkApiKeyPermission(
+    const apiKeys = readApiKeys(waveRequest, apiKeyHeaders);
+    if (apiKeys.length > 0) {
+      const ctx = await checkAnyApiKeyPermission(
         waveRequest,
         route,
-        apiKey,
+        apiKeys,
         options.validator,
         brokerIdHeader,
         brokerIdMaxLength,
@@ -213,7 +213,7 @@ export function registerPermissionAuth(
 
     const waveRequest = toWaveRequest(request);
     const hasCredential =
-      readApiKey(waveRequest, apiKeyHeaders) !== undefined ||
+      readApiKeys(waveRequest, apiKeyHeaders).length > 0 ||
       readBearerToken(waveRequest, authorizationHeader) !== undefined;
     if (!hasCredential) {
       throw new PermissionValidatorUnauthorizedError();

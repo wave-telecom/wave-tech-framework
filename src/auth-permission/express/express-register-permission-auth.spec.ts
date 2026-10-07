@@ -194,6 +194,50 @@ describe('expressRegisterPermissionAuth', () => {
       expect(validator.calls.map((call) => call.apiKey)).toEqual([API_KEY, API_KEY]);
     });
 
+    it('accepts the request when any presented key is valid', async () => {
+      const validator = new FakePermissionValidator((request) =>
+        request.apiKey === API_KEY
+          ? { authorized: true, brokers: ['tim'] }
+          : new PermissionValidatorUnauthorizedError(),
+      );
+      const app = buildTestApp({
+        validator,
+        routes: { 'GET /balances': { permissionName: PERMISSION } },
+        apiKeyHeader: ['x-api-key', 'authorization'],
+      });
+      const listening = await listen(app);
+      server = listening.server;
+
+      const res = await inject(listening.baseUrl, '/balances', {
+        [API_KEY_HEADER]: 'invalid-key',
+        authorization: API_KEY,
+      });
+
+      expect(res.statusCode).toBe(200);
+      expect(validator.calls.map((call) => call.apiKey)).toEqual(['invalid-key', API_KEY]);
+    });
+
+    it('rejects (401) only when no presented key is valid', async () => {
+      const validator = new FakePermissionValidator(
+        () => new PermissionValidatorUnauthorizedError(),
+      );
+      const app = buildTestApp({
+        validator,
+        routes: { 'GET /balances': { permissionName: PERMISSION } },
+        apiKeyHeader: ['x-api-key', 'authorization'],
+      });
+      const listening = await listen(app);
+      server = listening.server;
+
+      const res = await inject(listening.baseUrl, '/balances', {
+        [API_KEY_HEADER]: 'invalid-key',
+        authorization: 'another-invalid-key',
+      });
+
+      expect(res.statusCode).toBe(401);
+      expect(validator.calls).toHaveLength(2);
+    });
+
     it('rejects a header outside the configured list (401)', async () => {
       const validator = authorizes();
       const app = buildTestApp({
