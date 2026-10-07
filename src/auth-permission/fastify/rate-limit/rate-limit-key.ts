@@ -1,5 +1,5 @@
 import type { FastifyRequest } from 'fastify';
-import { readApiKey, readBearerToken } from '../../shared/read-credentials';
+import { readApiKeys, readBearerToken } from '../../shared/read-credentials';
 import { toWaveRequest } from '../to-wave-request';
 
 /**
@@ -17,10 +17,10 @@ export function credentialRateLimitKey(
 ): (request: FastifyRequest) => string {
   return (request) => {
     const waveRequest = toWaveRequest(request);
-    return (
-      readApiKey(waveRequest, apiKeyHeaders) ??
-      readBearerToken(waveRequest, authorizationHeader) ??
-      request.ip
-    );
+    const apiKeys = readApiKeys(waveRequest, apiKeyHeaders);
+    if (apiKeys.length > 0) {
+      return apiKeys[0];
+    }
+    return readBearerToken(waveRequest, authorizationHeader) ?? request.ip;
   };
 }

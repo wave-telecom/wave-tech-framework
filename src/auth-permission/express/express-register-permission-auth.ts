@@ -4,10 +4,10 @@ import type { SessionTokenVerifier } from '../session-token/session-token-verifi
 import { PermissionValidatorUnauthorizedError } from '../errors/permission-validator-unauthorized-error';
 import { PermissionDeniedError } from '../errors/permission-denied-error';
 import type { RouteProperties } from '../route-properties';
-import { checkApiKeyPermission } from '../api-key/check-api-key-permission';
+import { checkAnyApiKeyPermission } from '../api-key/check-api-key-permission';
 import { authenticateWithSessionToken } from '../session-token/authenticate-with-session-token';
 import { resolveApiKeyHeaders } from '../shared/api-key-headers';
-import { readApiKey, readBearerToken } from '../shared/read-credentials';
+import { readApiKeys, readBearerToken } from '../shared/read-credentials';
 import { isPublicPath } from '../shared/is-public-path';
 import { compileRoutes, matchRoute } from './route-matcher';
 import './express-request';
@@ -43,8 +43,8 @@ export interface ExpressPermissionAuthOptions {
   publicPaths?: string[];
   /**
    * Header(s) the API key is read from, case-insensitively. With a list, the
-   * first one present wins. May only include `authorizationHeader` when no
-   * route sets `acceptsSessionToken`.
+   * request passes if any key presented is valid. May only include
+   * `authorizationHeader` when no route sets `acceptsSessionToken`.
    */
   apiKeyHeader?: string | readonly string[];
   /** Required when any route in `routes` sets `acceptsSessionToken: true`. */
@@ -116,12 +116,12 @@ export function expressRegisterPermissionAuth(
   const compiledRoutes = compileRoutes(options.routes);
 
   const assertHasPermission: ExpressAssertHasPermission = async (request, route) => {
-    const apiKey = readApiKey(request, apiKeyHeaders);
-    if (apiKey !== undefined) {
-      const ctx = await checkApiKeyPermission(
+    const apiKeys = readApiKeys(request, apiKeyHeaders);
+    if (apiKeys.length > 0) {
+      const ctx = await checkAnyApiKeyPermission(
         request,
         route,
-        apiKey,
+        apiKeys,
         options.validator,
         brokerIdHeader,
         brokerIdMaxLength,
@@ -161,7 +161,7 @@ export function expressRegisterPermissionAuth(
     }
 
     const hasCredential =
-      readApiKey(request, apiKeyHeaders) !== undefined ||
+      readApiKeys(request, apiKeyHeaders).length > 0 ||
       readBearerToken(request, authorizationHeader) !== undefined;
     if (!hasCredential) {
       next(new PermissionValidatorUnauthorizedError());

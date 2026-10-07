@@ -294,7 +294,25 @@ describe('registerPermissionAuth', () => {
       expect(validator.calls.map((call) => call.apiKey)).toEqual([API_KEY, API_KEY]);
     });
 
-    it('prefers the earliest header in the list when several are present', async () => {
+    it('accepts the request when any presented key is valid', async () => {
+      const validator = new FakePermissionValidator((request) =>
+        request.apiKey === API_KEY
+          ? { authorized: true, brokers: ['tim'] }
+          : new PermissionValidatorUnauthorizedError(),
+      );
+      app = buildTestApp({ validator, apiKeyHeader: ['x-api-key', 'authorization'] });
+
+      const res = await app.inject({
+        method: 'POST',
+        url: '/protected',
+        headers: { [API_KEY_HEADER]: 'invalid-key', authorization: API_KEY },
+      });
+
+      expect(res.statusCode).toBe(200);
+      expect(validator.calls.map((call) => call.apiKey)).toEqual(['invalid-key', API_KEY]);
+    });
+
+    it('stops at the first valid key', async () => {
       const validator = authorizes();
       app = buildTestApp({ validator, apiKeyHeader: ['authorization', 'x-api-key'] });
 
@@ -305,6 +323,34 @@ describe('registerPermissionAuth', () => {
       });
 
       expect(validator.calls.map((call) => call.apiKey)).toEqual([API_KEY]);
+    });
+
+    it('rejects (401) only when no presented key is valid', async () => {
+      const validator = throwing(new PermissionValidatorUnauthorizedError());
+      app = buildTestApp({ validator, apiKeyHeader: ['x-api-key', 'authorization'] });
+
+      const res = await app.inject({
+        method: 'POST',
+        url: '/protected',
+        headers: { [API_KEY_HEADER]: 'invalid-key', authorization: 'another-invalid-key' },
+      });
+
+      expect(res.statusCode).toBe(401);
+      expect(validator.calls).toHaveLength(2);
+    });
+
+    it('fails closed (503) when the validator is unavailable, without trying the next key', async () => {
+      const validator = throwing(new PermissionValidatorUnavailableError('timeout'));
+      app = buildTestApp({ validator, apiKeyHeader: ['x-api-key', 'authorization'] });
+
+      const res = await app.inject({
+        method: 'POST',
+        url: '/protected',
+        headers: { [API_KEY_HEADER]: API_KEY, authorization: 'another-key' },
+      });
+
+      expect(res.statusCode).toBe(503);
+      expect(validator.calls).toHaveLength(1);
     });
 
     it('rejects a header outside the configured list (401)', async () => {
