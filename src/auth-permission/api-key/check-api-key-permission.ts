@@ -1,5 +1,6 @@
 import type { BrokerContext } from '../broker-context';
 import type { PermissionValidationResult, PermissionValidator } from './permission-validator';
+import { AmbiguousBrokerTargetError } from '../errors/ambiguous-broker-target-error';
 import { PermissionDeniedError } from '../errors/permission-denied-error';
 import { PermissionValidatorUnauthorizedError } from '../errors/permission-validator-unauthorized-error';
 import type { RouteProperties } from '../route-properties';
@@ -50,12 +51,7 @@ export async function checkApiKeyPermission(
   );
 }
 
-/**
- * Tries each presented API key in order and resolves with the first one that
- * passes. Only a rejection of the key itself moves on to the next one; any
- * other failure (validator unavailable, malformed broker header) is thrown
- * immediately. When every key is rejected, the first rejection is thrown.
- */
+/** Resolves with the first key that passes; rejects only when every key is rejected. */
 export async function checkAnyApiKeyPermission(
   request: WaveRequest,
   route: RouteProperties,
@@ -64,8 +60,8 @@ export async function checkAnyApiKeyPermission(
   brokerIdHeader: string,
   brokerIdMaxLength: number,
 ): Promise<BrokerContext | undefined> {
-  let firstRejection: Error = new PermissionValidatorUnauthorizedError();
-  for (const [index, apiKey] of apiKeys.entries()) {
+  let rejection: Error | undefined;
+  for (const apiKey of apiKeys) {
     try {
       return await checkApiKeyPermission(
         request,
@@ -78,14 +74,17 @@ export async function checkAnyApiKeyPermission(
     } catch (error) {
       const isKeyRejection =
         error instanceof PermissionValidatorUnauthorizedError ||
-        error instanceof PermissionDeniedError;
+        error instanceof PermissionDeniedError ||
+        error instanceof AmbiguousBrokerTargetError;
       if (!isKeyRejection) {
         throw error;
       }
-      if (index === 0) {
-        firstRejection = error;
+      // A key that is genuine but lacks the permission explains the failure
+      // better than one that is simply unknown.
+      if (rejection === undefined || rejection instanceof PermissionValidatorUnauthorizedError) {
+        rejection = error;
       }
     }
   }
-  throw firstRejection;
+  throw rejection ?? new PermissionValidatorUnauthorizedError();
 }

@@ -43,7 +43,8 @@ export interface ExpressPermissionAuthOptions {
   publicPaths?: string[];
   /**
    * Header(s) the API key is read from, case-insensitively. With a list, the
-   * request passes if any key presented is valid. May only include
+   * request passes if any key presented is valid, at the cost of one
+   * validator call per distinct key tried. May only include
    * `authorizationHeader` when no route sets `acceptsSessionToken`.
    */
   apiKeyHeader?: string | readonly string[];

@@ -9,7 +9,7 @@ import { checkAnyApiKeyPermission } from '../api-key/check-api-key-permission';
 import { authenticateWithSessionToken } from '../session-token/authenticate-with-session-token';
 import { resolveApiKeyHeaders } from '../shared/api-key-headers';
 import { readApiKeys, readBearerToken } from '../shared/read-credentials';
-import { credentialRateLimitKey } from './rate-limit/rate-limit-key';
+import { credentialRateLimitKeys } from './rate-limit/rate-limit-key';
 import { createRateLimitCheck } from './rate-limit/rate-limit-check';
 import { toWaveRequest } from './to-wave-request';
 import { isPublicPath } from '../shared/is-public-path';
@@ -33,7 +33,8 @@ export interface PermissionAuthOptions {
   publicPaths?: string[];
   /**
    * Header(s) the API key is read from, case-insensitively. With a list, the
-   * request passes if any key presented is valid. May only include
+   * request passes if any key presented is valid, at the cost of one
+   * validator call per distinct key tried. May only include
    * `authorizationHeader` when no route sets `acceptsSessionToken`.
    */
   apiKeyHeader?: string | readonly string[];
@@ -46,7 +47,7 @@ export interface PermissionAuthOptions {
    * Opts every route this hook protects into rate limiting (backed by
    * `@fastify/rate-limit`'s `createRateLimit`, see `rate-limit-check.ts`),
    * bucketed by the presented credential rather than `request.ip` by
-   * default (see `credentialRateLimitKey`) — pass a `keyGenerator` to
+   * default (see `credentialRateLimitKeys`) — pass a `keyGenerator` to
    * override that. A request over budget throws `TooManyRequestsError`
    * (`429`). Omitted entirely by default: this hook runs inside a shared
    * framework used by many independently deployed services with very
@@ -148,10 +149,11 @@ export function registerPermissionAuth(
   const checkRateLimit =
     options.rateLimit === undefined
       ? undefined
-      : createRateLimitCheck(app, {
-          keyGenerator: credentialRateLimitKey(apiKeyHeaders, authorizationHeader),
-          ...options.rateLimit,
-        });
+      : createRateLimitCheck(
+          app,
+          options.rateLimit,
+          credentialRateLimitKeys(apiKeyHeaders, authorizationHeader),
+        );
   if (checkRateLimit !== undefined) {
     void app.register(fastifyRateLimit, { global: false });
   }

@@ -11,6 +11,7 @@ import { PermissionValidatorUnauthorizedError } from '../errors/permission-valid
 import { PermissionDeniedError } from '../errors/permission-denied-error';
 import { AmbiguousBrokerTargetError } from '../errors/ambiguous-broker-target-error';
 import { SessionTokenInvalidError } from '../errors/session-token-invalid-error';
+import { PermissionValidatorUnavailableError } from '../errors/permission-validator-unavailable-error';
 import type {
   PermissionValidationRequest,
   PermissionValidationResult,
@@ -75,6 +76,10 @@ function testErrorHandler(error: Error, req: Request, res: Response, next: NextF
   }
   if (error instanceof SessionTokenInvalidError) {
     res.status(401).json({ type: 'session-token-invalid', message: error.message });
+    return;
+  }
+  if (error instanceof PermissionValidatorUnavailableError) {
+    res.status(503).json({ type: 'unavailable', message: error.message });
     return;
   }
   res.status(500).json({ type: 'unexpected', message: error.message });
@@ -236,6 +241,27 @@ describe('expressRegisterPermissionAuth', () => {
 
       expect(res.statusCode).toBe(401);
       expect(validator.calls).toHaveLength(2);
+    });
+
+    it('fails closed (503) when the validator is unavailable, without trying the next key', async () => {
+      const validator = new FakePermissionValidator(
+        () => new PermissionValidatorUnavailableError('timeout'),
+      );
+      const app = buildTestApp({
+        validator,
+        routes: { 'GET /balances': { permissionName: PERMISSION } },
+        apiKeyHeader: ['x-api-key', 'authorization'],
+      });
+      const listening = await listen(app);
+      server = listening.server;
+
+      const res = await inject(listening.baseUrl, '/balances', {
+        [API_KEY_HEADER]: API_KEY,
+        authorization: 'another-key',
+      });
+
+      expect(res.statusCode).toBe(503);
+      expect(validator.calls).toHaveLength(1);
     });
 
     it('rejects a header outside the configured list (401)', async () => {
