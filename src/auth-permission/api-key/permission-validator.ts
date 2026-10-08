@@ -21,7 +21,8 @@ export interface PermissionValidator {
   /**
    * Resolves with the verdict on success. Throws
    * `PermissionValidatorUnauthorizedError` when the credential itself is
-   * invalid, revoked or expired, and `PermissionValidatorUnavailableError`
+   * invalid, revoked or expired, `PermissionDeniedError` when the credential
+   * is genuine but may not be validated, and `PermissionValidatorUnavailableError`
    * when no verdict could be obtained at all (timeout, 5xx, malformed
    * response) — callers must fail closed on the latter.
    */

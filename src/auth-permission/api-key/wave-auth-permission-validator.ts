@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { PermissionDeniedError } from '../errors/permission-denied-error';
 import { PermissionValidatorUnauthorizedError } from '../errors/permission-validator-unauthorized-error';
 import { PermissionValidatorUnavailableError } from '../errors/permission-validator-unavailable-error';
 import type {
@@ -38,9 +39,18 @@ export class WaveAuthPermissionValidator implements PermissionValidator {
       throw new PermissionValidatorUnauthorizedError();
     }
 
-    // Only `401` is a verdict about the credential itself. Any other non-2xx
-    // — `5xx`, a contract `400`, `429` — is the absence of a verdict, and the
-    // caller must fail closed instead of treating it as a denial.
+    // `403` is a verdict about the credential too: the key is genuine but may
+    // not be validated (it lacks `auth.api_key.validate`), so the request is
+    // denied whatever the body says, never reported as an outage.
+    if (response.status === 403) {
+      throw new PermissionDeniedError(
+        `The API key is not allowed to validate the ${request.permission} permission`,
+      );
+    }
+
+    // Any other non-2xx — `5xx`, a contract `400`, `429` — is the absence of
+    // a verdict, and the caller must fail closed instead of treating it as a
+    // denial.
     if (!response.ok) {
       throw new PermissionValidatorUnavailableError(
         `${this.validateUrl} responded ${response.status}`,

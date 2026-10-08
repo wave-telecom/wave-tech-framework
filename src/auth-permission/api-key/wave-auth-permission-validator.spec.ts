@@ -1,6 +1,7 @@
 import { describe, it, expect, afterEach, vi } from 'vitest';
 import { setHookContext, setHookCorrelationId } from '../../core';
 import { WaveAuthPermissionValidator } from './wave-auth-permission-validator';
+import { PermissionDeniedError } from '../errors/permission-denied-error';
 import { PermissionValidatorUnauthorizedError } from '../errors/permission-validator-unauthorized-error';
 import { PermissionValidatorUnavailableError } from '../errors/permission-validator-unavailable-error';
 import type { PermissionValidationRequest } from './permission-validator';
@@ -109,8 +110,27 @@ describe('WaveAuthPermissionValidator — downstream failures', () => {
     },
   );
 
-  it.each([400, 403, 404, 429])(
-    'status %i — any 4xx other than 401 is an absent verdict, not a denial',
+  it('403 from wave-auth-api (a key that may not validate) throws PermissionDeniedError', async () => {
+    stubFetch(() =>
+      jsonResponse({ title: 'Forbidden', status: 403, detail: 'Insufficient permissions.' }, 403),
+    );
+
+    const rejection = buildValidator().validate(REQUEST);
+
+    await expect(rejection).rejects.toBeInstanceOf(PermissionDeniedError);
+    await expect(rejection).rejects.toThrow(
+      'The API key is not allowed to validate the tickets.ticket.create permission',
+    );
+  });
+
+  it('a 403 denies even when its body claims authorized', async () => {
+    stubFetch(() => jsonResponse({ authorized: true, brokers: ['tim'] }, 403));
+
+    await expect(buildValidator().validate(REQUEST)).rejects.toBeInstanceOf(PermissionDeniedError);
+  });
+
+  it.each([400, 404, 429])(
+    'status %i — any other 4xx is an absent verdict, not a denial',
     async (status) => {
       stubFetch(() => textResponse('refused', status));
 
@@ -120,8 +140,8 @@ describe('WaveAuthPermissionValidator — downstream failures', () => {
     },
   );
 
-  it('a 4xx never produces a verdict, authorized or not', async () => {
-    stubFetch(() => jsonResponse({ authorized: true, brokers: ['tim'] }, 403));
+  it('a 4xx other than 401 and 403 never produces a verdict, authorized or not', async () => {
+    stubFetch(() => jsonResponse({ authorized: true, brokers: ['tim'] }, 400));
 
     await expect(buildValidator().validate(REQUEST)).rejects.toBeInstanceOf(
       PermissionValidatorUnavailableError,
