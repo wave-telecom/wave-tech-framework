@@ -155,7 +155,7 @@ export function expressRegisterPermissionAuth(
     }
   };
 
-  const middleware: RequestHandler = (request, response, next) => {
+  const middleware: RequestHandler = async (request, response, next) => {
     if (isPublicPath(request.path, publicPaths)) {
       next();
       return;
@@ -175,24 +175,9 @@ export function expressRegisterPermissionAuth(
       return;
     }
 
-    // Express 4 does not catch a rejected promise thrown inside a
-    // middleware on its own — failures must be funneled through `next`
-    // explicitly.
-    void runAssertion(request, route, next);
+    await assertHasPermission(request, route);
+    next();
   };
-
-  async function runAssertion(
-    request: Request,
-    route: RouteProperties,
-    next: Parameters<RequestHandler>[2],
-  ): Promise<void> {
-    try {
-      await assertHasPermission(request, route);
-      next();
-    } catch (error) {
-      next(error);
-    }
-  }
 
   return { middleware, assertHasPermission };
 }
