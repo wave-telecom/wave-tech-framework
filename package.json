@@ -22,6 +22,9 @@
   },
   "author": "",
   "license": "Apache-2.0",
+  "engines": {
+    "node": ">=22.12.0"
+  },
   "peerDependencies": {
     "@dbos-inc/dbos-sdk": "^4.27.6",
     "@prisma/client": ">=6.3.1",
@@ -44,16 +47,16 @@
     }
   },
   "dependencies": {
-    "@fastify/rate-limit": "^11.2.0",
-    "date-fns": "^4.1.0",
-    "google-auth-library": "^9.15.1",
-    "hono": "^4.8.5",
+    "@fastify/rate-limit": "^11.2.1",
+    "date-fns": "^4.4.0",
+    "google-auth-library": "^11.3.0",
+    "hono": "^4.13.13",
     "jose": "^6.2.12",
-    "mathjs": "^14.2.1",
+    "mathjs": "^15.2.0",
     "path-to-regexp": "8.4.2",
-    "uuid": "^11.0.5",
-    "winston": "^3.17.0",
-    "zod": "^4.4.3"
+    "uuid": "^14.0.3",
+    "winston": "^3.19.0",
+    "zod": "^4.6.7"
   },
   "devDependencies": {
     "@dbos-inc/dbos-sdk": "^4.27.6",
